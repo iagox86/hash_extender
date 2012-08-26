@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "hash_extender_sha1.h"
+#include "hash_extender_md5.h"
 
 int main()
 {
@@ -20,6 +21,25 @@ int main()
   printf("\n-----------------------------------------------------\n\n");
   printf("sha1_test_different_length_append:\n");
   sha1_test_different_length_append();
+
+
+  printf("md5_test_evil_signature_generation:\n");
+  md5_test_evil_signature_generation();
+  printf("\n-----------------------------------------------------\n\n");
+  printf("md5_test_normal_signture_generation:\n");
+  md5_test_normal_signture_generation();
+  printf("\n-----------------------------------------------------\n\n");
+  printf("md5_test_basic_extension:\n");
+  md5_test_basic_extension();
+  printf("\n-----------------------------------------------------\n\n");
+  printf("md5_test_different_length_secret:\n");
+  md5_test_different_length_secret();
+  printf("\n-----------------------------------------------------\n\n");
+  printf("md5_test_different_length_data:\n");
+  md5_test_different_length_data();
+  printf("\n-----------------------------------------------------\n\n");
+  printf("md5_test_different_length_append:\n");
+  md5_test_different_length_append();
 
   return 0;
 }
