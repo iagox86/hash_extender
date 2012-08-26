@@ -6,6 +6,8 @@
 
 #include <openssl/sha.h>
 
+#define SHA1_BLOCK 64
+
 int sha1_check_signature(uint8_t *secret, size_t secret_length, uint8_t *data, size_t data_length, uint8_t *signature)
 {
   unsigned char result[SHA_DIGEST_LENGTH];
@@ -19,7 +21,69 @@ int sha1_check_signature(uint8_t *secret, size_t secret_length, uint8_t *data, s
   return !memcmp(signature, result, SHA_DIGEST_LENGTH);
 }
 
+/* Note: this only supports data with a 4-byte size (4.2 billion bytes). */
+uint8_t *sha1_append_data(uint8_t *data, size_t data_length, uint8_t *append, size_t append_length, uint8_t *new_signature, size_t *new_length)
+{
+  /* Allocate memory for the new buffer (enough room for buffer + a full block + the data) */
+  uint8_t *result = (uint8_t*) malloc(data_length + append_length + SHA1_BLOCK); /* (This can overflow if we're ever using this in a security-sensitive context) */
+
+  /* Start with the current buffer and length. */
+  memmove(result, data, data_length);
+  *new_length = data_length;
+
+  /* SHA1 uses a 1 bit (0x80) followed by enough 0 bits to get 4 bytes from the end of the buffer. */
+  result[(*new_length)++] = 0x80;
+  while(((*new_length + 4) % SHA1_BLOCK) != 0)
+    result[(*new_length)++] = 0x00;
+
+  /* Loop until we only require four bytes */
+  while(((*new_length) + 4) % 64 != 0)
+    data[(*new_length)++] = 0x00;
+
+  /* Bytes -> bits */
+  original_length = original_length * 8;
+
+  data[(*new_length)++] = (original_length >> 24) & 0x000000FF;
+  data[(*new_length)++] = (original_length >> 16) & 0x000000FF;
+  data[(*new_length)++] = (original_length >>  8) & 0x000000FF;
+  data[(*new_length)++] = (original_length >>  0) & 0x000000FF;
+
+
+  return (uint8_t*) malloc(100);
+}
+
+int main()
+{
+  uint8_t *secret    = (uint8_t*)"ivtAUQRQ6dFmH9";
+
+  uint8_t *data      = (uint8_t*)"count=1&lat=90&user_id=5&long=49&waffle=liege";
+  uint8_t *signature = (uint8_t*)"\x01\x97\x57\x92\x37\xc4\x4b\xb4\xea\x60\x44\x39\x59\x09\x5c\xb3\x61\xe2\x72\x5f";
+
+  uint8_t *append    = (uint8_t*)"some extra data";
+  uint8_t *new_data;
+  size_t  new_length;
+  uint8_t new_signature[SHA_DIGEST_LENGTH];
+
+  if(sha1_check_signature(secret, strlen((char*)secret), data, strlen((char*)data), signature))
+  {
+    new_data = sha1_append_data(data, strlen((char*)data), append, strlen((char*)append), new_signature, &new_length);
+
+    if(sha1_check_signature(secret, strlen((char*)secret), data, strlen((char*)data), new_signature));
+    {
+      printf("Passed!\n");
+    }
+  }
+
+  return 0;
+}
+
 #if 0
+
+/****************************************************\
+ * Everything below here is old and commented out!  *
+\****************************************************/
+
+
 /* Create a buffer and URLEncode stuff (yes, this is shitty code :) ) */
 void print_url(unsigned char *url, int url_length, unsigned char *signature)
 {
@@ -143,8 +207,4 @@ void test_hack(char *params, char *extra, char *original_hash)
 }
 #endif
 
-int main()
-{
 
-  return 0;
-}
