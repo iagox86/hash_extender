@@ -91,6 +91,10 @@ uint8_t *sha1_append_data(uint8_t *data, size_t data_length, uint8_t *append, si
   result[(*new_length)++] = (data_length >>  8) & 0x000000FF;
   result[(*new_length)++] = (data_length >>  0) & 0x000000FF;
 
+  /* Add the appended data to the end of the buffer. */
+  memcpy(result + (*new_length), append, append_length);
+  *new_length += append_length;
+
   return result;
 }
 
@@ -111,10 +115,10 @@ int main()
     new_data = sha1_append_data(data, strlen((char*)data), append, strlen((char*)append), new_signature, &new_length);
 
     print_hex_fancy(new_data, new_length);
-/*    if(sha1_check_signature(secret, strlen((char*)secret), data, strlen((char*)data), new_signature));
+    if(sha1_check_signature(secret, strlen((char*)secret), new_data, new_length, new_signature));
     {
       printf("Passed!\n");
-    } */
+    }
 
     free(new_data);
   }
