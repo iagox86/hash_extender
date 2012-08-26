@@ -64,11 +64,17 @@ int sha1_check_signature(uint8_t *secret, size_t secret_length, uint8_t *data, s
   SHA1_Update(&c, data, data_length);
   SHA1_Final(result, &c);
 
+  printf("Signature generated from secret + data: ");
+  print_hex(result, SHA_DIGEST_LENGTH);
+
+  printf("Signature to verify against:            ");
+  print_hex(signature, SHA_DIGEST_LENGTH);
+
   return !memcmp(signature, result, SHA_DIGEST_LENGTH);
 }
 
 /* Note: this only supports data with a 4-byte size (4.2 billion bits). */
-uint8_t *sha1_append_data(uint8_t *data, size_t data_length, uint8_t *append, size_t append_length, uint8_t *new_signature, size_t *new_length)
+uint8_t *sha1_append_data(uint8_t *data, size_t data_length, uint8_t *append, size_t append_length, size_t *new_length)
 {
   /* Allocate memory for the new buffer (enough room for buffer + a full block + the data) */
   uint8_t *result = (uint8_t*) malloc(data_length + append_length + SHA1_BLOCK); /* (This can overflow if we're ever using this in a security-sensitive context) */
@@ -112,10 +118,10 @@ int main()
 
   if(sha1_check_signature(secret, strlen((char*)secret), data, strlen((char*)data), signature))
   {
-    new_data = sha1_append_data(data, strlen((char*)data), append, strlen((char*)append), new_signature, &new_length);
+    new_data = sha1_append_data(data, strlen((char*)data), append, strlen((char*)append), &new_length);
 
     print_hex_fancy(new_data, new_length);
-    if(sha1_check_signature(secret, strlen((char*)secret), new_data, new_length, new_signature));
+    if(sha1_check_signature(secret, strlen((char*)secret), new_data, new_length, new_signature))
     {
       printf("Passed!\n");
     }
