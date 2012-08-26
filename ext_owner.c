@@ -8,6 +8,52 @@
 
 #define SHA1_BLOCK 64
 
+void print_hex(unsigned char *data, unsigned int length)
+{
+  unsigned int i;
+
+  for(i = 0; i < length; i++)
+    printf("%02x", data[i]);
+  printf("\n");
+}
+
+static char get_character_from_byte(uint8_t byte)
+{
+  if(byte < 0x20 || byte > 0x7F)
+    return '.';
+  return byte;
+}
+
+void print_hex_fancy(uint8_t *data, size_t length)
+{
+  size_t i, j;
+
+  for(i = 0; i < length; i++)
+  {
+    if(!(i % 16))
+    {
+      if(i > 0)
+      {
+        printf("   ");
+        for(j = 16; j > 0; j--)
+        {
+          printf("%c", get_character_from_byte(data[i - j]));
+        }
+      }
+      printf("\n%04X: ", (int)i);
+    }
+
+    printf("%02X ", data[i]);
+  }
+
+  for(i = length % 16; i < 17; i++)
+    printf("   ");
+  for(i = length - (length % 16); i < length; i++)
+    printf("%c", get_character_from_byte(data[i]));
+
+  printf("\nLength: 0x%X (%d)\n", (int)length, (int)length);
+}
+
 int sha1_check_signature(uint8_t *secret, size_t secret_length, uint8_t *data, size_t data_length, uint8_t *signature)
 {
   unsigned char result[SHA_DIGEST_LENGTH];
@@ -21,7 +67,7 @@ int sha1_check_signature(uint8_t *secret, size_t secret_length, uint8_t *data, s
   return !memcmp(signature, result, SHA_DIGEST_LENGTH);
 }
 
-/* Note: this only supports data with a 4-byte size (4.2 billion bytes). */
+/* Note: this only supports data with a 4-byte size (4.2 billion bits). */
 uint8_t *sha1_append_data(uint8_t *data, size_t data_length, uint8_t *append, size_t append_length, uint8_t *new_signature, size_t *new_length)
 {
   /* Allocate memory for the new buffer (enough room for buffer + a full block + the data) */
@@ -36,20 +82,16 @@ uint8_t *sha1_append_data(uint8_t *data, size_t data_length, uint8_t *append, si
   while(((*new_length + 4) % SHA1_BLOCK) != 0)
     result[(*new_length)++] = 0x00;
 
-  /* Loop until we only require four bytes */
-  while(((*new_length) + 4) % 64 != 0)
-    data[(*new_length)++] = 0x00;
+  /* Convert the original length to bits */
+  data_length = data_length * 8;
 
-  /* Bytes -> bits */
-  original_length = original_length * 8;
+  /* Set the last 4 bytes of result to the new length. */
+  result[(*new_length)++] = (data_length >> 24) & 0x000000FF;
+  result[(*new_length)++] = (data_length >> 16) & 0x000000FF;
+  result[(*new_length)++] = (data_length >>  8) & 0x000000FF;
+  result[(*new_length)++] = (data_length >>  0) & 0x000000FF;
 
-  data[(*new_length)++] = (original_length >> 24) & 0x000000FF;
-  data[(*new_length)++] = (original_length >> 16) & 0x000000FF;
-  data[(*new_length)++] = (original_length >>  8) & 0x000000FF;
-  data[(*new_length)++] = (original_length >>  0) & 0x000000FF;
-
-
-  return (uint8_t*) malloc(100);
+  return result;
 }
 
 int main()
@@ -68,10 +110,13 @@ int main()
   {
     new_data = sha1_append_data(data, strlen((char*)data), append, strlen((char*)append), new_signature, &new_length);
 
-    if(sha1_check_signature(secret, strlen((char*)secret), data, strlen((char*)data), new_signature));
+    print_hex_fancy(new_data, new_length);
+/*    if(sha1_check_signature(secret, strlen((char*)secret), data, strlen((char*)data), new_signature));
     {
       printf("Passed!\n");
-    }
+    } */
+
+    free(new_data);
   }
 
   return 0;
@@ -118,14 +163,7 @@ void print_url(unsigned char *url, int url_length, unsigned char *signature)
   printf("wget -qO- --post-file=payload.bin https://level07-2.stripe-ctf.com/user-khqqbglfcj/orders\n");
 }
 
-void print_hex(unsigned char *data, unsigned int length)
-{
-  unsigned int i;
 
-  for(i = 0; i < length; i++)
-    printf("%02x", data[i]);
-  printf("\n");
-}
 
 void add_padding(unsigned char *data, int *new_length)
 {
