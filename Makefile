@@ -1,8 +1,12 @@
-CFLAGS=-std=c89 -g -oS
+CFLAGS=-std=c89 -g -oS -Wall -Werror
 LIBS=-lssl
 
 all: hash_extender
 
-hash_extender: hash_extender.c
-	gcc $(LIBS) $(CFLAGS) -Wall -Werror -o hash_extender hash_extender.c
+hash_extender: hash_extender.o hash_extender_sha1.o util.o
+	gcc -o hash_extender $(LIBS) hash_extender.o hash_extender_sha1.o util.o
+
+clean:
+	rm -f *.o
+	rm -f hash_extender
 
