@@ -1,8 +1,8 @@
 CFLAGS=-std=c89 -g -oS
 LIBS=-lssl
 
-all: ext_owner
+all: hash_extender
 
-ext_owner: ext_owner.c
-	gcc $(LIBS) $(CFLAGS) -Wall -Werror -o ext_owner ext_owner.c
+hash_extender: hash_extender.c
+	gcc $(LIBS) $(CFLAGS) -Wall -Werror -o hash_extender hash_extender.c
 
