@@ -64,12 +64,6 @@ int sha1_check_signature(uint8_t *secret, size_t secret_length, uint8_t *data, s
   SHA1_Update(&c, data, data_length);
   SHA1_Final(result, &c);
 
-  printf("Signature generated from secret + data: ");
-  print_hex(result, SHA_DIGEST_LENGTH);
-
-  printf("Signature to verify against:            ");
-  print_hex(signature, SHA_DIGEST_LENGTH);
-
   return !memcmp(signature, result, SHA_DIGEST_LENGTH);
 }
 
@@ -157,6 +151,7 @@ void test_normal_signture_generation()
 
 void test_evil_signature_generation()
 {
+  uint8_t *secret    = (uint8_t*)"XXXXXXXXXXXXXX"; /* We don't know the actual secret here. */
   uint8_t *data      = (uint8_t*)"count=2&lat=37.351&user_id=1&long=-119.827&waffle=chicken";
   uint8_t *signature = (uint8_t*)"\xe8\xc5\x7b\xb7\xcb\xb6\xfa\x98\xd1\x16\xed\x06\x62\x2d\x60\x00\xee\x43\x1d\x49";
 
@@ -165,9 +160,9 @@ void test_evil_signature_generation()
   size_t  new_length;
   uint8_t new_signature[SHA_DIGEST_LENGTH];
 
-  new_data = sha1_append_data(data, strlen((char*)data), 14, append, strlen((char*)append), &new_length);
+  new_data = sha1_append_data(data, strlen((char*)data), strlen((char*)secret), append, strlen((char*)append), &new_length);
 
-  sha1_gen_signature_evil(14, strlen((char*)data), signature, append, strlen((char*)append), new_signature);
+  sha1_gen_signature_evil(strlen((char*)secret), strlen((char*)data), signature, append, strlen((char*)append), new_signature);
 
   printf("Generated: ");
   print_hex(new_signature, SHA_DIGEST_LENGTH);
@@ -191,10 +186,10 @@ void test_basic_extension()
   sha1_gen_signature(secret, strlen((char*)secret), data, strlen((char*)data), original_signature);
 
   /* Create the new data. */
-  new_data = sha1_append_data(data, strlen((char*)data), 14, append, strlen((char*)append), &new_length);
+  new_data = sha1_append_data(data, strlen((char*)data), strlen((char*)secret), append, strlen((char*)append), &new_length);
 
   /* Generate an evil signature with the data appended. */
-  sha1_gen_signature_evil(14, strlen((char*)data), original_signature, append, strlen((char*)append), new_signature);
+  sha1_gen_signature_evil(strlen((char*)secret), strlen((char*)data), original_signature, append, strlen((char*)append), new_signature);
 
   /* Check the new signature. */
   if(sha1_check_signature(secret, strlen((char*)secret), new_data, new_length, new_signature))
@@ -205,8 +200,36 @@ void test_basic_extension()
   free(new_data);
 }
 
-void test_different_length_extension()
+void test_different_length_secret()
 {
+  uint8_t *secret    = (uint8_t*)"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+  uint8_t *data      = (uint8_t*)"DATA";
+  uint8_t *append    = (uint8_t*)"APPENDZ0R";
+  uint8_t *new_data;
+  size_t  new_length;
+
+  uint8_t original_signature[SHA_DIGEST_LENGTH];
+  uint8_t new_signature[SHA_DIGEST_LENGTH];
+
+  size_t i;
+
+  for(i = 0; i < 175; i++)
+  {
+    /* Get the original signature. */
+    sha1_gen_signature(secret, i, data, strlen((char*)data), original_signature);
+
+    /* Create the new data. */
+    new_data = sha1_append_data(data, strlen((char*)data), i, append, strlen((char*)append), &new_length);
+
+    /* Generate an evil signature with the data appended. */
+    sha1_gen_signature_evil(i, strlen((char*)data), original_signature, append, strlen((char*)append), new_signature);
+
+    /* Check the new signature. */
+    if(!sha1_check_signature(secret, i, new_data, new_length, new_signature))
+      printf("Length %ld: Failed!\n", i);
+  }
+
+  free(new_data);
 }
 
 
@@ -221,8 +244,8 @@ int main()
   printf("test_basic_extension:\n");
   test_basic_extension();
   printf("\n-----------------------------------------------------\n\n");
-  printf("test_different_length_extension:\n");
-  test_basic_extension();
+  printf("test_different_length_secret:\n");
+  test_different_length_secret();
 
   return 0;
 }
