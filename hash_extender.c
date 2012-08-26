@@ -142,7 +142,41 @@ void sha1_gen_signature_evil(size_t secret_length, size_t data_length, uint8_t o
   SHA1_Final(new_signature, &c);
 }
 
-void test1()
+void test_normal_signture_generation()
+{
+  uint8_t *secret    = (uint8_t*)"ivtAUQRQ6dFmH9";
+  uint8_t *data      = (uint8_t*)"count=1&lat=37.351&user_id=5&long=-119.827&waffle=chicken";
+  uint8_t signature[SHA_DIGEST_LENGTH];
+
+  sha1_gen_signature(secret, strlen((char*)secret), data, strlen((char*)data), signature);
+
+  printf("Generated: ");
+  print_hex(signature, SHA_DIGEST_LENGTH);
+  printf("Should be: d2dc907fbdbfd02a77d22e502fd15bf6c2004a1f\n");
+}
+
+void test_evil_signature_generation()
+{
+  uint8_t *data      = (uint8_t*)"count=2&lat=37.351&user_id=1&long=-119.827&waffle=chicken";
+  uint8_t *signature = (uint8_t*)"\xe8\xc5\x7b\xb7\xcb\xb6\xfa\x98\xd1\x16\xed\x06\x62\x2d\x60\x00\xee\x43\x1d\x49";
+
+  uint8_t *append    = (uint8_t*)"&waffle=liege";
+  uint8_t *new_data;
+  size_t  new_length;
+  uint8_t new_signature[SHA_DIGEST_LENGTH];
+
+  new_data = sha1_append_data(data, strlen((char*)data), 14, append, strlen((char*)append), &new_length);
+
+  sha1_gen_signature_evil(14, strlen((char*)data), signature, append, strlen((char*)append), new_signature);
+
+  printf("Generated: ");
+  print_hex(new_signature, SHA_DIGEST_LENGTH);
+  printf("Should be: adb43a448aad421b4b1b11b1973af6ab95b69221\n");
+
+  free(new_data);
+}
+
+void test_basic_extension()
 {
   uint8_t *secret    = (uint8_t*)"ivtAUQRQ6dFmH9";
   uint8_t *data      = (uint8_t*)"count=2&lat=37.351&user_id=1&long=-119.827&waffle=chicken";
@@ -158,7 +192,6 @@ void test1()
 
   /* Create the new data. */
   new_data = sha1_append_data(data, strlen((char*)data), 14, append, strlen((char*)append), &new_length);
-  print_hex_fancy(new_data, new_length);
 
   /* Generate an evil signature with the data appended. */
   sha1_gen_signature_evil(14, strlen((char*)data), original_signature, append, strlen((char*)append), new_signature);
@@ -172,52 +205,24 @@ void test1()
   free(new_data);
 }
 
-
-void test2()
+void test_different_length_extension()
 {
-  uint8_t *data      = (uint8_t*)"count=2&lat=37.351&user_id=1&long=-119.827&waffle=chicken";
-  uint8_t *signature = (uint8_t*)"\xe8\xc5\x7b\xb7\xcb\xb6\xfa\x98\xd1\x16\xed\x06\x62\x2d\x60\x00\xee\x43\x1d\x49";
-
-  uint8_t *append    = (uint8_t*)"&waffle=liege";
-  uint8_t *new_data;
-  size_t  new_length;
-  uint8_t new_signature[SHA_DIGEST_LENGTH];
-
-  new_data = sha1_append_data(data, strlen((char*)data), 14, append, strlen((char*)append), &new_length);
-
-  sha1_gen_signature_evil(14, strlen((char*)data), signature, append, strlen((char*)append), new_signature);
-
-  print_hex_fancy(new_data, new_length);
-  printf("Generated: ");
-  print_hex(new_signature, SHA_DIGEST_LENGTH);
-  printf("Should be: adb43a448aad421b4b1b11b1973af6ab95b69221\n");
-
-  free(new_data);
 }
 
-void test3()
-{
-  uint8_t *secret    = (uint8_t*)"ivtAUQRQ6dFmH9";
-  uint8_t *data      = (uint8_t*)"count=1&lat=37.351&user_id=5&long=-119.827&waffle=chicken";
-  uint8_t signature[SHA_DIGEST_LENGTH];
-
-  sha1_gen_signature(secret, strlen((char*)secret), data, strlen((char*)data), signature);
-
-  printf("Generated: ");
-  print_hex(signature, SHA_DIGEST_LENGTH);
-  printf("Should be: d2dc907fbdbfd02a77d22e502fd15bf6c2004a1f\n");
-}
 
 int main()
 {
-  printf("TEST2:\n");
-  test2();
+  printf("test_evil_signature_generation:\n");
+  test_evil_signature_generation();
   printf("\n-----------------------------------------------------\n\n");
-  printf("TEST3:\n");
-  test3();
+  printf("test_normal_signture_generation:\n");
+  test_normal_signture_generation();
   printf("\n-----------------------------------------------------\n\n");
-  printf("TEST1:\n");
-  test1();
+  printf("test_basic_extension:\n");
+  test_basic_extension();
+  printf("\n-----------------------------------------------------\n\n");
+  printf("test_different_length_extension:\n");
+  test_basic_extension();
 
   return 0;
 }
