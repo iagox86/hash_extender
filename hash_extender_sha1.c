@@ -27,7 +27,7 @@ int sha1_check_signature(uint8_t *secret, size_t secret_length, uint8_t *data, s
 uint8_t *sha1_append_data(uint8_t *data, size_t data_length, size_t secret_length, uint8_t *append, size_t append_length, size_t *new_length)
 {
   /* Allocate memory for the new buffer (enough room for buffer + a full block + the data) */
-  uint8_t *result = (uint8_t*) malloc(data_length + append_length + SHA1_BLOCK); /* (This can overflow if we're ever using this in a security-sensitive context) */
+  uint8_t *result = (uint8_t*) malloc(1000 + data_length + append_length + SHA1_BLOCK); /* (This can overflow if we're ever using this in a security-sensitive context) */
   size_t bit_length;
 
   /* Start with the current buffer and length. */
@@ -135,9 +135,9 @@ void sha1_test_evil_signature_generation()
 
 void sha1_test_basic_extension()
 {
-  uint8_t *secret    = (uint8_t*)"ivtAUQRQ6dFmH9";
-  uint8_t *data      = (uint8_t*)"count=2&lat=37.351&user_id=1&long=-119.827&waffle=chicken";
-  uint8_t *append    = (uint8_t*)"&waffle=liege";
+  uint8_t *secret    = (uint8_t*)"SECRET";
+  uint8_t *data      = (uint8_t*)"DATA";
+  uint8_t *append    = (uint8_t*)"APPEND";
   uint8_t *new_data;
   size_t  new_length;
 
@@ -192,9 +192,8 @@ void sha1_test_different_length_secret()
       printf("Length %ld: Failed!\n", i);
       printf("  signature + data = %d\n", (int)(strlen((char*)data) + i));
     }
+    free(new_data);
   }
-
-  free(new_data);
 }
 
 void sha1_test_different_length_data()
@@ -227,9 +226,8 @@ void sha1_test_different_length_data()
       printf("Length %ld: Failed!\n", i);
       printf("  signature + data = %d\n", (int)(strlen((char*)secret) + i));
     }
+    free(new_data);
   }
-
-  free(new_data);
 }
 
 void sha1_test_different_length_append()
@@ -262,8 +260,7 @@ void sha1_test_different_length_append()
       printf("Length %ld: Failed!\n", i);
       printf("  signature + data = %d\n", (int)(strlen((char*)data) + i));
     }
+    free(new_data);
   }
-
-  free(new_data);
 }
 

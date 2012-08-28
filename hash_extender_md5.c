@@ -10,7 +10,7 @@
 
 #define MD5_BLOCK 64
 
-int MD5_check_signature(uint8_t *secret, size_t secret_length, uint8_t *data, size_t data_length, uint8_t *signature)
+int md5_check_signature(uint8_t *secret, size_t secret_length, uint8_t *data, size_t data_length, uint8_t *signature)
 {
   unsigned char result[MD5_DIGEST_LENGTH];
 
@@ -20,21 +20,24 @@ int MD5_check_signature(uint8_t *secret, size_t secret_length, uint8_t *data, si
   MD5_Update(&c, data, data_length);
   MD5_Final(result, &c);
 
+  print_hex(signature, MD5_DIGEST_LENGTH);
+  print_hex(result,    MD5_DIGEST_LENGTH);
+
   return !memcmp(signature, result, MD5_DIGEST_LENGTH);
 }
 
 /* Note: this only supports data with a 4-byte size (4.2 billion bits). */
-uint8_t *MD5_append_data(uint8_t *data, size_t data_length, size_t secret_length, uint8_t *append, size_t append_length, size_t *new_length)
+uint8_t *md5_append_data(uint8_t *data, size_t data_length, size_t secret_length, uint8_t *append, size_t append_length, size_t *new_length)
 {
   /* Allocate memory for the new buffer (enough room for buffer + a full block + the data) */
-  uint8_t *result = (uint8_t*) malloc(data_length + append_length + MD5_BLOCK); /* (This can overflow if we're ever using this in a security-sensitive context) */
+  uint8_t *result = (uint8_t*) malloc(1000 + data_length + append_length + MD5_BLOCK); /* (This can overflow if we're ever using this in a security-sensitive context) */
   size_t bit_length;
 
   /* Start with the current buffer and length. */
   memmove(result, data, data_length);
   *new_length = data_length;
 
-  /* Pad until we're 8 bytes short of a 56-byte block. */
+
   result[(*new_length)++] = 0x80;
   while(((*new_length + secret_length) % MD5_BLOCK) != 56)
     result[(*new_length)++] = 0x00;
@@ -59,7 +62,7 @@ uint8_t *MD5_append_data(uint8_t *data, size_t data_length, size_t secret_length
   return result;
 }
 
-void MD5_gen_signature(uint8_t *secret, size_t secret_length, uint8_t *data, size_t data_length, uint8_t signature[MD5_DIGEST_LENGTH])
+void md5_gen_signature(uint8_t *secret, size_t secret_length, uint8_t *data, size_t data_length, uint8_t signature[MD5_DIGEST_LENGTH])
 {
   MD5_CTX c;
   MD5_Init(&c);
@@ -68,7 +71,7 @@ void MD5_gen_signature(uint8_t *secret, size_t secret_length, uint8_t *data, siz
   MD5_Final(signature, &c);
 }
 
-void MD5_gen_signature_evil(size_t secret_length, size_t data_length, uint8_t original_signature[MD5_DIGEST_LENGTH], uint8_t *append, size_t append_length, uint8_t new_signature[MD5_DIGEST_LENGTH])
+void md5_gen_signature_evil(size_t secret_length, size_t data_length, uint8_t original_signature[MD5_DIGEST_LENGTH], uint8_t *append, size_t append_length, uint8_t new_signature[MD5_DIGEST_LENGTH])
 {
   MD5_CTX c;
   size_t original_data_length;
@@ -109,16 +112,16 @@ void md5_test_basic_extension()
   uint8_t new_signature[MD5_DIGEST_LENGTH];
 
   /* Get the original signature. */
-  MD5_gen_signature(secret, strlen((char*)secret), data, strlen((char*)data), original_signature);
+  md5_gen_signature(secret, strlen((char*)secret), data, strlen((char*)data), original_signature);
 
   /* Create the new data. */
-  new_data = MD5_append_data(data, strlen((char*)data), strlen((char*)secret), append, strlen((char*)append), &new_length);
+  new_data = md5_append_data(data, strlen((char*)data), strlen((char*)secret), append, strlen((char*)append), &new_length);
 
   /* Generate an evil signature with the data appended. */
-  MD5_gen_signature_evil(strlen((char*)secret), strlen((char*)data), original_signature, append, strlen((char*)append), new_signature);
+  md5_gen_signature_evil(strlen((char*)secret), strlen((char*)data), original_signature, append, strlen((char*)append), new_signature);
 
   /* Check the new signature. */
-  if(MD5_check_signature(secret, strlen((char*)secret), new_data, new_length, new_signature))
+  if(md5_check_signature(secret, strlen((char*)secret), new_data, new_length, new_signature))
   {
     printf("Passed!\n");
   }
@@ -146,23 +149,22 @@ void md5_test_different_length_secret()
   for(i = 0; i < 75; i++)
   {
     /* Get the original signature. */
-    MD5_gen_signature(secret, i, data, strlen((char*)data), original_signature);
+    md5_gen_signature(secret, i, data, strlen((char*)data), original_signature);
 
     /* Create the new data. */
-    new_data = MD5_append_data(data, strlen((char*)data), i, append, strlen((char*)append), &new_length);
+    new_data = md5_append_data(data, strlen((char*)data), i, append, strlen((char*)append), &new_length);
 
     /* Generate an evil signature with the data appended. */
-    MD5_gen_signature_evil(i, strlen((char*)data), original_signature, append, strlen((char*)append), new_signature);
+    md5_gen_signature_evil(i, strlen((char*)data), original_signature, append, strlen((char*)append), new_signature);
 
     /* Check the new signature. */
-    if(!MD5_check_signature(secret, i, new_data, new_length, new_signature))
+    if(!md5_check_signature(secret, i, new_data, new_length, new_signature))
     {
       printf("Length %ld: Failed!\n", i);
       printf("  signature + data = %d\n", (int)(strlen((char*)data) + i));
     }
+    free(new_data);
   }
-
-  free(new_data);
 }
 
 void md5_test_different_length_data()
@@ -181,23 +183,22 @@ void md5_test_different_length_data()
   for(i = 0; i < 75; i++)
   {
     /* Get the original signature. */
-    MD5_gen_signature(secret, strlen((char*)secret), data, i, original_signature);
+    md5_gen_signature(secret, strlen((char*)secret), data, i, original_signature);
 
     /* Create the new data. */
-    new_data = MD5_append_data(data, i, strlen((char*)secret), append, strlen((char*)append), &new_length);
+    new_data = md5_append_data(data, i, strlen((char*)secret), append, strlen((char*)append), &new_length);
 
     /* Generate an evil signature with the data appended. */
-    MD5_gen_signature_evil(strlen((char*)secret), i, original_signature, append, strlen((char*)append), new_signature);
+    md5_gen_signature_evil(strlen((char*)secret), i, original_signature, append, strlen((char*)append), new_signature);
 
     /* Check the new signature. */
-    if(!MD5_check_signature(secret, strlen((char*)secret), new_data, new_length, new_signature))
+    if(!md5_check_signature(secret, strlen((char*)secret), new_data, new_length, new_signature))
     {
       printf("Length %ld: Failed!\n", i);
       printf("  signature + data = %d\n", (int)(strlen((char*)secret) + i));
     }
+    free(new_data);
   }
-
-  free(new_data);
 }
 
 void md5_test_different_length_append()
@@ -216,22 +217,21 @@ void md5_test_different_length_append()
   for(i = 0; i < 75; i++)
   {
     /* Get the original signature. */
-    MD5_gen_signature(secret, strlen((char*)secret), data, strlen((char*)data), original_signature);
+    md5_gen_signature(secret, strlen((char*)secret), data, strlen((char*)data), original_signature);
 
     /* Create the new data. */
-    new_data = MD5_append_data(data, strlen((char*)data), strlen((char*)secret), append, i, &new_length);
+    new_data = md5_append_data(data, strlen((char*)data), strlen((char*)secret), append, i, &new_length);
 
     /* Generate an evil signature with the data appended. */
-    MD5_gen_signature_evil(strlen((char*)secret), strlen((char*)data), original_signature, append, i, new_signature);
+    md5_gen_signature_evil(strlen((char*)secret), strlen((char*)data), original_signature, append, i, new_signature);
 
     /* Check the new signature. */
-    if(!MD5_check_signature(secret, strlen((char*)secret), new_data, new_length, new_signature))
+    if(!md5_check_signature(secret, strlen((char*)secret), new_data, new_length, new_signature))
     {
       printf("Length %ld: Failed!\n", i);
       printf("  signature + data = %d\n", (int)(strlen((char*)data) + i));
     }
+    free(new_data);
   }
-
-  free(new_data);
 }
 
