@@ -9,6 +9,7 @@
 #include "util.h"
 
 #define MD5_BLOCK 64
+#define MD5_DIGEST_LENGTH 16
 
 int md5_check_signature(uint8_t *secret, size_t secret_length, uint8_t *data, size_t data_length, uint8_t *signature)
 {
@@ -19,9 +20,6 @@ int md5_check_signature(uint8_t *secret, size_t secret_length, uint8_t *data, si
   MD5_Update(&c, secret, secret_length);
   MD5_Update(&c, data, data_length);
   MD5_Final(result, &c);
-
-  print_hex(signature, MD5_DIGEST_LENGTH);
-  print_hex(result,    MD5_DIGEST_LENGTH);
 
   return !memcmp(signature, result, MD5_DIGEST_LENGTH);
 }
@@ -46,14 +44,14 @@ uint8_t *md5_append_data(uint8_t *data, size_t data_length, size_t secret_length
   bit_length = (secret_length + data_length) * 8;
 
   /* Set the last 4 bytes of result to the new length. */
-  result[(*new_length)++] = 0;
-  result[(*new_length)++] = 0;
-  result[(*new_length)++] = 0;
-  result[(*new_length)++] = 0;
-  result[(*new_length)++] = (bit_length >> 24) & 0x000000FF;
-  result[(*new_length)++] = (bit_length >> 16) & 0x000000FF;
-  result[(*new_length)++] = (bit_length >>  8) & 0x000000FF;
   result[(*new_length)++] = (bit_length >>  0) & 0x000000FF;
+  result[(*new_length)++] = (bit_length >>  8) & 0x000000FF;
+  result[(*new_length)++] = (bit_length >> 16) & 0x000000FF;
+  result[(*new_length)++] = (bit_length >> 24) & 0x000000FF;
+  result[(*new_length)++] = 0;
+  result[(*new_length)++] = 0;
+  result[(*new_length)++] = 0;
+  result[(*new_length)++] = 0;
 
   /* Add the appended data to the end of the buffer. */
   memcpy(result + (*new_length), append, append_length);
@@ -88,10 +86,11 @@ void md5_gen_signature_evil(size_t secret_length, size_t data_length, uint8_t or
 
   /* Restore the original context (letting us start from where the last hash left off). */
   /* TODO: is ntonl() the appropriate function here? Will this work on a big-endian system? */
-  c.A = htonl(((int*)original_signature)[0]);
-  c.B = htonl(((int*)original_signature)[1]);
-  c.C = htonl(((int*)original_signature)[2]);
-  c.D = htonl(((int*)original_signature)[3]);
+  /*memcpy(&c.A, original_signature, 16);*/
+  c.A = ((int*)original_signature)[0];
+  c.B = ((int*)original_signature)[1];
+  c.C = ((int*)original_signature)[2];
+  c.D = ((int*)original_signature)[3];
 
   /* Add the new data to the hash. */
   MD5_Update(&c, append, append_length);
