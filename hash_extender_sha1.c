@@ -164,7 +164,7 @@ void sha1_test_basic_extension()
 
 void sha1_test_different_length_secret()
 {
-  uint8_t *secret    = (uint8_t*)"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+  uint8_t *secret    = (uint8_t*)"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
   uint8_t *data      = (uint8_t*)"DATA";
   uint8_t *append    = (uint8_t*)"APPENDZ0R";
   uint8_t *new_data;
@@ -175,7 +175,7 @@ void sha1_test_different_length_secret()
 
   size_t i;
 
-  for(i = 0; i < 75; i++)
+  for(i = 0; i < 275; i++)
   {
     /* Get the original signature. */
     sha1_gen_signature(secret, i, data, strlen((char*)data), original_signature);
