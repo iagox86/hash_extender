@@ -6,22 +6,10 @@
 
 #include <openssl/sha.h>
 
+#include "test.h"
 #include "util.h"
 
 #define SHA1_BLOCK 64
-
-int sha1_check_signature(uint8_t *secret, size_t secret_length, uint8_t *data, size_t data_length, uint8_t *signature)
-{
-  unsigned char result[SHA_DIGEST_LENGTH];
-
-  SHA_CTX c;
-  SHA1_Init(&c);
-  SHA1_Update(&c, secret, secret_length);
-  SHA1_Update(&c, data, data_length);
-  SHA1_Final(result, &c);
-
-  return !memcmp(signature, result, SHA_DIGEST_LENGTH);
-}
 
 /* Note: this only supports data with a 4-byte size (4.2 billion bits). */
 uint8_t *sha1_append_data(uint8_t *data, size_t data_length, size_t secret_length, uint8_t *append, size_t append_length, size_t *new_length)
@@ -33,7 +21,6 @@ uint8_t *sha1_append_data(uint8_t *data, size_t data_length, size_t secret_lengt
   /* Start with the current buffer and length. */
   memmove(result, data, data_length);
   *new_length = data_length;
-
 
   result[(*new_length)++] = 0x80;
   while(((*new_length + secret_length) % SHA1_BLOCK) != 56)
@@ -98,42 +85,20 @@ void sha1_gen_signature_evil(size_t secret_length, size_t data_length, uint8_t o
   SHA1_Final(new_signature, &c);
 }
 
-void sha1_test_normal_signture_generation()
+static int sha1_test_validate(uint8_t *secret, size_t secret_length, uint8_t *data, size_t data_length, uint8_t *signature)
 {
-  uint8_t *secret    = (uint8_t*)"ivtAUQRQ6dFmH9";
-  uint8_t *data      = (uint8_t*)"count=1&lat=37.351&user_id=5&long=-119.827&waffle=chicken";
-  uint8_t signature[SHA_DIGEST_LENGTH];
+  unsigned char result[SHA_DIGEST_LENGTH];
 
-  sha1_gen_signature(secret, strlen((char*)secret), data, strlen((char*)data), signature);
+  SHA_CTX c;
+  SHA1_Init(&c);
+  SHA1_Update(&c, secret, secret_length);
+  SHA1_Update(&c, data, data_length);
+  SHA1_Final(result, &c);
 
-  printf("Generated: ");
-  print_hex(signature, SHA_DIGEST_LENGTH);
-  printf("Should be: d2dc907fbdbfd02a77d22e502fd15bf6c2004a1f\n");
+  return !memcmp(signature, result, SHA_DIGEST_LENGTH);
 }
 
-void sha1_test_evil_signature_generation()
-{
-  uint8_t *secret    = (uint8_t*)"XXXXXXXXXXXXXX"; /* We don't know the actual secret here. */
-  uint8_t *data      = (uint8_t*)"count=2&lat=37.351&user_id=1&long=-119.827&waffle=chicken";
-  uint8_t *signature = (uint8_t*)"\xe8\xc5\x7b\xb7\xcb\xb6\xfa\x98\xd1\x16\xed\x06\x62\x2d\x60\x00\xee\x43\x1d\x49";
-
-  uint8_t *append    = (uint8_t*)"&waffle=liege";
-  uint8_t *new_data;
-  size_t  new_length;
-  uint8_t new_signature[SHA_DIGEST_LENGTH];
-
-  new_data = sha1_append_data(data, strlen((char*)data), strlen((char*)secret), append, strlen((char*)append), &new_length);
-
-  sha1_gen_signature_evil(strlen((char*)secret), strlen((char*)data), signature, append, strlen((char*)append), new_signature);
-
-  printf("Generated: ");
-  print_hex(new_signature, SHA_DIGEST_LENGTH);
-  printf("Should be: adb43a448aad421b4b1b11b1973af6ab95b69221\n");
-
-  free(new_data);
-}
-
-void sha1_test_basic_extension()
+static void sha1_test_extension()
 {
   uint8_t *secret    = (uint8_t*)"SECRET";
   uint8_t *data      = (uint8_t*)"DATA";
@@ -143,6 +108,8 @@ void sha1_test_basic_extension()
 
   uint8_t original_signature[SHA_DIGEST_LENGTH];
   uint8_t new_signature[SHA_DIGEST_LENGTH];
+
+  printf("Testing basic sha1 data...\n");
 
   /* Get the original signature. */
   sha1_gen_signature(secret, strlen((char*)secret), data, strlen((char*)data), original_signature);
@@ -154,19 +121,16 @@ void sha1_test_basic_extension()
   sha1_gen_signature_evil(strlen((char*)secret), strlen((char*)data), original_signature, append, strlen((char*)append), new_signature);
 
   /* Check the new signature. */
-  if(sha1_check_signature(secret, strlen((char*)secret), new_data, new_length, new_signature))
-  {
-    printf("Passed!\n");
-  }
+  test_check_boolean("sha1 basic extension", sha1_test_validate(secret, strlen((char*)secret), new_data, new_length, new_signature));
 
   free(new_data);
 }
 
-void sha1_test_different_length_secret()
+static void sha1_test_lengths()
 {
-  uint8_t *secret    = (uint8_t*)"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-  uint8_t *data      = (uint8_t*)"DATA";
-  uint8_t *append    = (uint8_t*)"APPENDZ0R";
+  uint8_t *secret    = (uint8_t*)"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+  uint8_t *data      = (uint8_t*)"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+  uint8_t *append    = (uint8_t*)"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC";
   uint8_t *new_data;
   size_t  new_length;
 
@@ -175,7 +139,9 @@ void sha1_test_different_length_secret()
 
   size_t i;
 
-  for(i = 0; i < 275; i++)
+  printf("Testing sha1 data of various lengths...\n");
+
+  for(i = 0; i < 1000; i++)
   {
     /* Get the original signature. */
     sha1_gen_signature(secret, i, data, strlen((char*)data), original_signature);
@@ -187,29 +153,13 @@ void sha1_test_different_length_secret()
     sha1_gen_signature_evil(i, strlen((char*)data), original_signature, append, strlen((char*)append), new_signature);
 
     /* Check the new signature. */
-    if(!sha1_check_signature(secret, i, new_data, new_length, new_signature))
-    {
-      printf("Length %ld: Failed!\n", i);
-      printf("  signature + data = %d\n", (int)(strlen((char*)data) + i));
-    }
+    test_check_boolean("sha1 different lengths (secret)", sha1_test_validate(secret, i, new_data, new_length, new_signature));
+
+    /* Free the memory we allocatd. */
     free(new_data);
   }
-}
 
-void sha1_test_different_length_data()
-{
-  uint8_t *secret    = (uint8_t*)"SECRET";
-  uint8_t *data      = (uint8_t*)"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-  uint8_t *append    = (uint8_t*)"APPENDZ0R";
-  uint8_t *new_data;
-  size_t  new_length;
-
-  uint8_t original_signature[SHA_DIGEST_LENGTH];
-  uint8_t new_signature[SHA_DIGEST_LENGTH];
-
-  size_t i;
-
-  for(i = 0; i < 75; i++)
+  for(i = 0; i < 1000; i++)
   {
     /* Get the original signature. */
     sha1_gen_signature(secret, strlen((char*)secret), data, i, original_signature);
@@ -221,29 +171,13 @@ void sha1_test_different_length_data()
     sha1_gen_signature_evil(strlen((char*)secret), i, original_signature, append, strlen((char*)append), new_signature);
 
     /* Check the new signature. */
-    if(!sha1_check_signature(secret, strlen((char*)secret), new_data, new_length, new_signature))
-    {
-      printf("Length %ld: Failed!\n", i);
-      printf("  signature + data = %d\n", (int)(strlen((char*)secret) + i));
-    }
+    test_check_boolean("sha1 different lengths (data)", sha1_test_validate(secret, strlen((char*)secret), new_data, new_length, new_signature));
+
+    /* Free the memory we allocatd. */
     free(new_data);
   }
-}
 
-void sha1_test_different_length_append()
-{
-  uint8_t *secret    = (uint8_t*)"SEKRET";
-  uint8_t *data      = (uint8_t*)"DATA";
-  uint8_t *append    = (uint8_t*)"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-  uint8_t *new_data;
-  size_t  new_length;
-
-  uint8_t original_signature[SHA_DIGEST_LENGTH];
-  uint8_t new_signature[SHA_DIGEST_LENGTH];
-
-  size_t i;
-
-  for(i = 0; i < 75; i++)
+  for(i = 0; i < 1000; i++)
   {
     /* Get the original signature. */
     sha1_gen_signature(secret, strlen((char*)secret), data, strlen((char*)data), original_signature);
@@ -255,12 +189,16 @@ void sha1_test_different_length_append()
     sha1_gen_signature_evil(strlen((char*)secret), strlen((char*)data), original_signature, append, i, new_signature);
 
     /* Check the new signature. */
-    if(!sha1_check_signature(secret, strlen((char*)secret), new_data, new_length, new_signature))
-    {
-      printf("Length %ld: Failed!\n", i);
-      printf("  signature + data = %d\n", (int)(strlen((char*)data) + i));
-    }
+    test_check_boolean("sha1 different lengths (secret)", sha1_test_validate(secret, strlen((char*)secret), new_data, new_length, new_signature));
+
+    /* Free the memory we allocatd. */
     free(new_data);
   }
+}
+
+void sha1_test()
+{
+  sha1_test_extension();
+  sha1_test_lengths();
 }
 

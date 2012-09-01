@@ -1,28 +1,14 @@
 #include <stdio.h>
-#include <arpa/inet.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
 
 #include <openssl/md5.h>
 
+#include "test.h"
 #include "util.h"
 
 #define MD5_BLOCK 64
-#define MD5_DIGEST_LENGTH 16
-
-int md5_check_signature(uint8_t *secret, size_t secret_length, uint8_t *data, size_t data_length, uint8_t *signature)
-{
-  unsigned char result[MD5_DIGEST_LENGTH];
-
-  MD5_CTX c;
-  MD5_Init(&c);
-  MD5_Update(&c, secret, secret_length);
-  MD5_Update(&c, data, data_length);
-  MD5_Final(result, &c);
-
-  return !memcmp(signature, result, MD5_DIGEST_LENGTH);
-}
 
 /* Note: this only supports data with a 4-byte size (4.2 billion bits). */
 uint8_t *md5_append_data(uint8_t *data, size_t data_length, size_t secret_length, uint8_t *append, size_t append_length, size_t *new_length)
@@ -34,7 +20,6 @@ uint8_t *md5_append_data(uint8_t *data, size_t data_length, size_t secret_length
   /* Start with the current buffer and length. */
   memmove(result, data, data_length);
   *new_length = data_length;
-
 
   result[(*new_length)++] = 0x80;
   while(((*new_length + secret_length) % MD5_BLOCK) != 56)
@@ -85,12 +70,7 @@ void md5_gen_signature_evil(size_t secret_length, size_t data_length, uint8_t or
     MD5_Update(&c, "A", 1);
 
   /* Restore the original context (letting us start from where the last hash left off). */
-  /* TODO: is ntonl() the appropriate function here? Will this work on a big-endian system? */
-  /*memcpy(&c.A, original_signature, 16);*/
-  c.A = ((int*)original_signature)[0];
-  c.B = ((int*)original_signature)[1];
-  c.C = ((int*)original_signature)[2];
-  c.D = ((int*)original_signature)[3];
+  memcpy(&c.A, original_signature, MD5_DIGEST_LENGTH);
 
   /* Add the new data to the hash. */
   MD5_Update(&c, append, append_length);
@@ -99,7 +79,20 @@ void md5_gen_signature_evil(size_t secret_length, size_t data_length, uint8_t or
   MD5_Final(new_signature, &c);
 }
 
-void md5_test_basic_extension()
+static int md5_test_validate(uint8_t *secret, size_t secret_length, uint8_t *data, size_t data_length, uint8_t *signature)
+{
+  unsigned char result[MD5_DIGEST_LENGTH];
+
+  MD5_CTX c;
+  MD5_Init(&c);
+  MD5_Update(&c, secret, secret_length);
+  MD5_Update(&c, data, data_length);
+  MD5_Final(result, &c);
+
+  return !memcmp(signature, result, MD5_DIGEST_LENGTH);
+}
+
+static void md5_test_extension()
 {
   uint8_t *secret    = (uint8_t*)"SECRET";
   uint8_t *data      = (uint8_t*)"DATA";
@@ -109,6 +102,8 @@ void md5_test_basic_extension()
 
   uint8_t original_signature[MD5_DIGEST_LENGTH];
   uint8_t new_signature[MD5_DIGEST_LENGTH];
+
+  printf("Testing some basic MD5 data...\n");
 
   /* Get the original signature. */
   md5_gen_signature(secret, strlen((char*)secret), data, strlen((char*)data), original_signature);
@@ -120,23 +115,16 @@ void md5_test_basic_extension()
   md5_gen_signature_evil(strlen((char*)secret), strlen((char*)data), original_signature, append, strlen((char*)append), new_signature);
 
   /* Check the new signature. */
-  if(md5_check_signature(secret, strlen((char*)secret), new_data, new_length, new_signature))
-  {
-    printf("Passed!\n");
-  }
-  else
-  {
-    printf("Failed!\n");
-  }
+  test_check_boolean("md5 basic extension", md5_test_validate(secret, strlen((char*)secret), new_data, new_length, new_signature));
 
   free(new_data);
 }
 
-void md5_test_different_length_secret()
+static void md5_test_lengths()
 {
-  uint8_t *secret    = (uint8_t*)"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-  uint8_t *data      = (uint8_t*)"DATA";
-  uint8_t *append    = (uint8_t*)"APPENDZ0R";
+  uint8_t *secret    = (uint8_t*)"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+  uint8_t *data      = (uint8_t*)"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+  uint8_t *append    = (uint8_t*)"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC";
   uint8_t *new_data;
   size_t  new_length;
 
@@ -145,7 +133,9 @@ void md5_test_different_length_secret()
 
   size_t i;
 
-  for(i = 0; i < 75; i++)
+  printf("Testing MD5 data of various lengths...\n");
+
+  for(i = 0; i < 1000; i++)
   {
     /* Get the original signature. */
     md5_gen_signature(secret, i, data, strlen((char*)data), original_signature);
@@ -157,29 +147,13 @@ void md5_test_different_length_secret()
     md5_gen_signature_evil(i, strlen((char*)data), original_signature, append, strlen((char*)append), new_signature);
 
     /* Check the new signature. */
-    if(!md5_check_signature(secret, i, new_data, new_length, new_signature))
-    {
-      printf("Length %ld: Failed!\n", i);
-      printf("  signature + data = %d\n", (int)(strlen((char*)data) + i));
-    }
+    test_check_boolean("md5 different lengths (secret)", md5_test_validate(secret, i, new_data, new_length, new_signature));
+
+    /* Free the memory we allocatd. */
     free(new_data);
   }
-}
 
-void md5_test_different_length_data()
-{
-  uint8_t *secret    = (uint8_t*)"SECRET";
-  uint8_t *data      = (uint8_t*)"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-  uint8_t *append    = (uint8_t*)"APPENDZ0R";
-  uint8_t *new_data;
-  size_t  new_length;
-
-  uint8_t original_signature[MD5_DIGEST_LENGTH];
-  uint8_t new_signature[MD5_DIGEST_LENGTH];
-
-  size_t i;
-
-  for(i = 0; i < 75; i++)
+  for(i = 0; i < 1000; i++)
   {
     /* Get the original signature. */
     md5_gen_signature(secret, strlen((char*)secret), data, i, original_signature);
@@ -191,29 +165,13 @@ void md5_test_different_length_data()
     md5_gen_signature_evil(strlen((char*)secret), i, original_signature, append, strlen((char*)append), new_signature);
 
     /* Check the new signature. */
-    if(!md5_check_signature(secret, strlen((char*)secret), new_data, new_length, new_signature))
-    {
-      printf("Length %ld: Failed!\n", i);
-      printf("  signature + data = %d\n", (int)(strlen((char*)secret) + i));
-    }
+    test_check_boolean("md5 different lengths (data)", md5_test_validate(secret, strlen((char*)secret), new_data, new_length, new_signature));
+
+    /* Free the memory we allocatd. */
     free(new_data);
   }
-}
 
-void md5_test_different_length_append()
-{
-  uint8_t *secret    = (uint8_t*)"SEKRET";
-  uint8_t *data      = (uint8_t*)"DATA";
-  uint8_t *append    = (uint8_t*)"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-  uint8_t *new_data;
-  size_t  new_length;
-
-  uint8_t original_signature[MD5_DIGEST_LENGTH];
-  uint8_t new_signature[MD5_DIGEST_LENGTH];
-
-  size_t i;
-
-  for(i = 0; i < 75; i++)
+  for(i = 0; i < 1000; i++)
   {
     /* Get the original signature. */
     md5_gen_signature(secret, strlen((char*)secret), data, strlen((char*)data), original_signature);
@@ -225,12 +183,16 @@ void md5_test_different_length_append()
     md5_gen_signature_evil(strlen((char*)secret), strlen((char*)data), original_signature, append, i, new_signature);
 
     /* Check the new signature. */
-    if(!md5_check_signature(secret, strlen((char*)secret), new_data, new_length, new_signature))
-    {
-      printf("Length %ld: Failed!\n", i);
-      printf("  signature + data = %d\n", (int)(strlen((char*)data) + i));
-    }
+    test_check_boolean("md5 different lengths (secret)", md5_test_validate(secret, strlen((char*)secret), new_data, new_length, new_signature));
+
+    /* Free the memory we allocatd. */
     free(new_data);
   }
+}
+
+void md5_test()
+{
+  md5_test_extension();
+  md5_test_lengths();
 }
 
