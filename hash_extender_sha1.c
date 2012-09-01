@@ -109,7 +109,7 @@ static void sha1_test_extension()
   uint8_t original_signature[SHA_DIGEST_LENGTH];
   uint8_t new_signature[SHA_DIGEST_LENGTH];
 
-  printf("Testing basic sha1 data...\n");
+  printf("Testing some basic SHA1 data...\n");
 
   /* Get the original signature. */
   sha1_gen_signature(secret, strlen((char*)secret), data, strlen((char*)data), original_signature);
@@ -139,7 +139,7 @@ static void sha1_test_lengths()
 
   size_t i;
 
-  printf("Testing sha1 data of various lengths...\n");
+  printf("Testing SHA1 data of various lengths...\n");
 
   for(i = 0; i < 1000; i++)
   {
