@@ -33,10 +33,10 @@ uint8_t *md5_append_data(uint8_t *data, size_t data_length, size_t secret_length
   result[(*new_length)++] = (bit_length >>  8) & 0x000000FF;
   result[(*new_length)++] = (bit_length >> 16) & 0x000000FF;
   result[(*new_length)++] = (bit_length >> 24) & 0x000000FF;
-  result[(*new_length)++] = 0;
-  result[(*new_length)++] = 0;
-  result[(*new_length)++] = 0;
-  result[(*new_length)++] = 0;
+  result[(*new_length)++] = (bit_length >> 32) & 0x000000FF;
+  result[(*new_length)++] = (bit_length >> 40) & 0x000000FF;
+  result[(*new_length)++] = (bit_length >> 48) & 0x000000FF;
+  result[(*new_length)++] = (bit_length >> 56) & 0x000000FF;
 
   /* Add the appended data to the end of the buffer. */
   memcpy(result + (*new_length), append, append_length);
@@ -70,7 +70,10 @@ void md5_gen_signature_evil(size_t secret_length, size_t data_length, uint8_t or
     MD5_Update(&c, "A", 1);
 
   /* Restore the original context (letting us start from where the last hash left off). */
-  memcpy(&c.A, original_signature, MD5_DIGEST_LENGTH);
+  c.A = htole32(((int*)original_signature)[0]);
+  c.B = htole32(((int*)original_signature)[1]);
+  c.C = htole32(((int*)original_signature)[2]);
+  c.D = htole32(((int*)original_signature)[3]);
 
   /* Add the new data to the hash. */
   MD5_Update(&c, append, append_length);

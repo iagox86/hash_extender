@@ -1,3 +1,4 @@
+#include <endian.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -30,10 +31,10 @@ uint8_t *sha256_append_data(uint8_t *data, size_t data_length, size_t secret_len
   bit_length = (secret_length + data_length) * 8;
 
   /* Set the last 4 bytes of result to the new length. */
-  result[(*new_length)++] = 0;
-  result[(*new_length)++] = 0;
-  result[(*new_length)++] = 0;
-  result[(*new_length)++] = 0;
+  result[(*new_length)++] = (bit_length >> 56) & 0x000000FF;
+  result[(*new_length)++] = (bit_length >> 48) & 0x000000FF;
+  result[(*new_length)++] = (bit_length >> 40) & 0x000000FF;
+  result[(*new_length)++] = (bit_length >> 32) & 0x000000FF;
   result[(*new_length)++] = (bit_length >> 24) & 0x000000FF;
   result[(*new_length)++] = (bit_length >> 16) & 0x000000FF;
   result[(*new_length)++] = (bit_length >>  8) & 0x000000FF;
@@ -71,14 +72,14 @@ void sha256_gen_signature_evil(size_t secret_length, size_t data_length, uint8_t
     SHA256_Update(&c, "A", 1);
 
   /* Restore the original context (letting us start from where the last hash left off). */
-  c.h[0] = htonl(((int*)original_signature)[0]);
-  c.h[1] = htonl(((int*)original_signature)[1]);
-  c.h[2] = htonl(((int*)original_signature)[2]);
-  c.h[3] = htonl(((int*)original_signature)[3]);
-  c.h[4] = htonl(((int*)original_signature)[4]);
-  c.h[5] = htonl(((int*)original_signature)[5]);
-  c.h[6] = htonl(((int*)original_signature)[6]);
-  c.h[7] = htonl(((int*)original_signature)[7]);
+  c.h[0] = htobe32(((uint32_t*)original_signature)[0]);
+  c.h[1] = htobe32(((uint32_t*)original_signature)[1]);
+  c.h[2] = htobe32(((uint32_t*)original_signature)[2]);
+  c.h[3] = htobe32(((uint32_t*)original_signature)[3]);
+  c.h[4] = htobe32(((uint32_t*)original_signature)[4]);
+  c.h[5] = htobe32(((uint32_t*)original_signature)[5]);
+  c.h[6] = htobe32(((uint32_t*)original_signature)[6]);
+  c.h[7] = htobe32(((uint32_t*)original_signature)[7]);
 
   /* Add the new data to the hash. */
   SHA256_Update(&c, append, append_length);

@@ -10,7 +10,7 @@ int main()
   sha1_test();
   md5_test();
   sha256_test();
-/*  sha512_test();*/
+  sha512_test();
   test_report();
 
   return 0;

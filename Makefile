@@ -1,4 +1,4 @@
-CFLAGS=-std=c89 -g -oS #-Wall -Werror
+CFLAGS=-std=c89 -g -oS -Wall -Werror -D_BSD_SOURCE
 LIBS=-lssl
 
 all: hash_extender_test
