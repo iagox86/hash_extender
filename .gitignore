@@ -1,0 +1,5 @@
+# ignore objects and archives, anywhere in the tree.
+*.[oa]
+
+hash_extender_test
+
