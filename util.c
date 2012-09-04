@@ -19,9 +19,9 @@ static char get_character_from_byte(uint8_t byte)
   return byte;
 }
 
-void print_hex_fancy(uint8_t *data, size_t length)
+void print_hex_fancy(uint8_t *data, uint64_t length)
 {
-  size_t i, j;
+  uint64_t i, j;
 
   for(i = 0; i < length; i++)
   {
