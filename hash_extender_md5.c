@@ -54,7 +54,7 @@ void md5_gen_signature(uint8_t *secret, uint64_t secret_length, uint8_t *data, u
   MD5_Final(signature, &c);
 }
 
-void md5_gen_signature_evil(uint64_t secret_length, size_t data_length, uint8_t original_signature[MD5_DIGEST_LENGTH], uint8_t *append, size_t append_length, uint8_t new_signature[MD5_DIGEST_LENGTH])
+void md5_gen_signature_evil(uint64_t secret_length, uint64_t data_length, uint8_t original_signature[MD5_DIGEST_LENGTH], uint8_t *append, uint64_t append_length, uint8_t new_signature[MD5_DIGEST_LENGTH])
 {
   MD5_CTX c;
   uint64_t original_data_length;
@@ -82,7 +82,7 @@ void md5_gen_signature_evil(uint64_t secret_length, size_t data_length, uint8_t 
   MD5_Final(new_signature, &c);
 }
 
-static int md5_test_validate(uint8_t *secret, uint64_t secret_length, uint8_t *data, size_t data_length, uint8_t *signature)
+static int md5_test_validate(uint8_t *secret, uint64_t secret_length, uint8_t *data, uint64_t data_length, uint8_t *signature)
 {
   unsigned char result[MD5_DIGEST_LENGTH];
 

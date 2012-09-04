@@ -11,7 +11,7 @@
 
 #define SHA512_BLOCK 64
 
-uint8_t *sha512_append_data(uint8_t *data, uint64_t data_length, size_t secret_length, uint8_t *append, size_t append_length, size_t *new_length)
+uint8_t *sha512_append_data(uint8_t *data, uint64_t data_length, uint64_t secret_length, uint8_t *append, uint64_t append_length, uint64_t *new_length)
 {
   /* Allocate memory for the new buffer (enough room for buffer + a full block + the data) */
   uint8_t *result = (uint8_t*) malloc(1000 + data_length + append_length + SHA512_BLOCK); /* (This can overflow if we're ever using this in a security-sensitive context) */
@@ -45,7 +45,7 @@ uint8_t *sha512_append_data(uint8_t *data, uint64_t data_length, size_t secret_l
   return result;
 }
 
-void sha512_gen_signature(uint8_t *secret, uint64_t secret_length, uint8_t *data, size_t data_length, uint8_t signature[SHA512_DIGEST_LENGTH])
+void sha512_gen_signature(uint8_t *secret, uint64_t secret_length, uint8_t *data, uint64_t data_length, uint8_t signature[SHA512_DIGEST_LENGTH])
 {
   SHA512_CTX c;
   SHA512_Init(&c);
@@ -54,7 +54,7 @@ void sha512_gen_signature(uint8_t *secret, uint64_t secret_length, uint8_t *data
   SHA512_Final(signature, &c);
 }
 
-void sha512_gen_signature_evil(uint64_t secret_length, size_t data_length, uint8_t original_signature[SHA512_DIGEST_LENGTH], uint8_t *append, size_t append_length, uint8_t new_signature[SHA512_DIGEST_LENGTH])
+void sha512_gen_signature_evil(uint64_t secret_length, uint64_t data_length, uint8_t original_signature[SHA512_DIGEST_LENGTH], uint8_t *append, uint64_t append_length, uint8_t new_signature[SHA512_DIGEST_LENGTH])
 {
   SHA512_CTX c;
   uint64_t original_data_length;
@@ -86,7 +86,7 @@ void sha512_gen_signature_evil(uint64_t secret_length, size_t data_length, uint8
   SHA512_Final(new_signature, &c);
 }
 
-static int sha512_test_validate(uint8_t *secret, uint64_t secret_length, uint8_t *data, size_t data_length, uint8_t *signature)
+static int sha512_test_validate(uint8_t *secret, uint64_t secret_length, uint8_t *data, uint64_t data_length, uint8_t *signature)
 {
   unsigned char result[SHA512_DIGEST_LENGTH];
 

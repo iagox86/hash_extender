@@ -30,7 +30,7 @@ void test_check_boolean(char *description, uint8_t passed)
   }
 }
 
-void test_check_memory(char *description, uint8_t *expected, uint64_t expected_length, uint8_t *result, size_t result_length)
+void test_check_memory(char *description, uint8_t *expected, uint64_t expected_length, uint8_t *result, uint64_t result_length)
 {
   if(expected_length == result_length && !memcmp(expected, result, expected_length))
   {
