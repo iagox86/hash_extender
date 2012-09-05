@@ -10,6 +10,7 @@
 #include "util.h"
 
 #define SHA512_BLOCK 128
+#define SHA512_LENGTH_SIZE 16
 
 uint8_t *sha512_append_data(uint8_t *data, uint64_t data_length, uint64_t secret_length, uint8_t *append, uint64_t append_length, uint64_t *new_length)
 {
@@ -22,7 +23,7 @@ uint8_t *sha512_append_data(uint8_t *data, uint64_t data_length, uint64_t secret
   *new_length = data_length;
 
   result[(*new_length)++] = 0x80;
-  while(((*new_length + secret_length) % SHA512_BLOCK) != 112)
+  while(((*new_length + secret_length) % SHA512_BLOCK) != (SHA512_BLOCK - SHA512_LENGTH_SIZE))
     result[(*new_length)++] = 0x00;
 
   /* Convert the original length to bits so we can append it. */
@@ -73,7 +74,7 @@ void sha512_gen_signature_evil(uint64_t secret_length, uint64_t data_length, uin
   /* We need to add bytes equal to the original size of the message, plus
    * padding. The reason we add 16 is because the padding is based on the
    * (length % 112) (16 bytes before a full block size). */
-  original_data_length = (((secret_length + data_length + 16) / SHA512_BLOCK) * SHA512_BLOCK) + SHA512_BLOCK;
+  original_data_length = (((secret_length + data_length + SHA512_LENGTH_SIZE) / SHA512_BLOCK) * SHA512_BLOCK) + SHA512_BLOCK;
   for(i = 0; i < original_data_length; i++)
     SHA512_Update(&c, "A", 1);
 

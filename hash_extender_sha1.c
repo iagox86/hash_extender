@@ -10,6 +10,7 @@
 #include "util.h"
 
 #define SHA1_BLOCK 64
+#define SHA1_LENGTH_SIZE 8
 
 /* Note: this only supports data with a 4-byte size (4.2 billion bits). */
 uint8_t *sha1_append_data(uint8_t *data, uint64_t data_length, uint64_t secret_length, uint8_t *append, uint64_t append_length, uint64_t *new_length)
@@ -23,7 +24,7 @@ uint8_t *sha1_append_data(uint8_t *data, uint64_t data_length, uint64_t secret_l
   *new_length = data_length;
 
   result[(*new_length)++] = 0x80;
-  while(((*new_length + secret_length) % SHA1_BLOCK) != 56)
+  while(((*new_length + secret_length) % SHA1_BLOCK) != (SHA1_BLOCK - SHA1_LENGTH_SIZE))
     result[(*new_length)++] = 0x00;
 
   /* Convert the original length to bits so we can append it. */
@@ -66,7 +67,7 @@ void sha1_gen_signature_evil(uint64_t secret_length, uint64_t data_length, uint8
   /* We need to add bytes equal to the original size of the message, plus
    * padding. The reason we add 8 is because the padding is based on the
    * (length % 56) (8 bytes before a full block size). */
-  original_data_length = (((secret_length + data_length + 8) / SHA1_BLOCK) * SHA1_BLOCK) + SHA1_BLOCK;
+  original_data_length = (((secret_length + data_length + SHA1_LENGTH_SIZE) / SHA1_BLOCK) * SHA1_BLOCK) + SHA1_BLOCK;
   for(i = 0; i < original_data_length; i++)
     SHA1_Update(&c, "A", 1);
 
