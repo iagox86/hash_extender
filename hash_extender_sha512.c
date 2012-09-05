@@ -14,8 +14,9 @@
 
 uint8_t *sha512_append_data(uint8_t *data, uint64_t data_length, uint64_t secret_length, uint8_t *append, uint64_t append_length, uint64_t *new_length)
 {
-  /* Allocate memory for the new buffer (enough room for buffer + a full block + the data) */
-  uint8_t *result = (uint8_t*) malloc(10000 + data_length + append_length + SHA512_BLOCK); /* (This can overflow if we're ever using this in a security-sensitive context) */
+  /* Allocate memory for the new buffer (enough room for buffer + two full block (finish the current block, entire next block) + the data) */
+  /* Note that this can overflow, so this can't be used in security-sensitive applications! */
+  uint8_t *result = malloc(data_length + append_length + (2 * SHA512_BLOCK));
   uint64_t bit_length;
 
   /* Start with the current buffer and length. */
@@ -151,7 +152,7 @@ static void sha512_test_lengths()
 
   printf("Testing SHA512 data of various lengths...\n");
 
-  for(i = 0; i < 1000; i++)
+  for(i = 0; i < 993; i++)
   {
     /* Get the original signature. */
     sha512_gen_signature(secret, i, data, strlen((char*)data), original_signature);
@@ -169,7 +170,7 @@ static void sha512_test_lengths()
     free(new_data);
   }
 
-  for(i = 0; i < 1000; i++)
+  for(i = 0; i < 993; i++)
   {
     /* Get the original signature. */
     sha512_gen_signature(secret, strlen((char*)secret), data, i, original_signature);
@@ -187,7 +188,7 @@ static void sha512_test_lengths()
     free(new_data);
   }
 
-  for(i = 0; i < 1000; i++)
+  for(i = 0; i < 993; i++)
   {
     /* Get the original signature. */
     sha512_gen_signature(secret, strlen((char*)secret), data, strlen((char*)data), original_signature);
