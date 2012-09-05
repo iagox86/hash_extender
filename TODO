@@ -1,0 +1,5 @@
+- Fix malloc() sizes
+- Algorithms to look into:
+  - RIPEMD
+  - WHIRLPOOL
+  - MD6
