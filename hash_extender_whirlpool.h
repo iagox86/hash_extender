@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include <openssl/sha.h>
+#include <openssl/ripemd.h>
 
 #include "util.h"
 
