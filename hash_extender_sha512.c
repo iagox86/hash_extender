@@ -9,12 +9,12 @@
 #include "test.h"
 #include "util.h"
 
-#define SHA512_BLOCK 64
+#define SHA512_BLOCK 128
 
 uint8_t *sha512_append_data(uint8_t *data, uint64_t data_length, uint64_t secret_length, uint8_t *append, uint64_t append_length, uint64_t *new_length)
 {
   /* Allocate memory for the new buffer (enough room for buffer + a full block + the data) */
-  uint8_t *result = (uint8_t*) malloc(1000 + data_length + append_length + SHA512_BLOCK); /* (This can overflow if we're ever using this in a security-sensitive context) */
+  uint8_t *result = (uint8_t*) malloc(10000 + data_length + append_length + SHA512_BLOCK); /* (This can overflow if we're ever using this in a security-sensitive context) */
   uint64_t bit_length;
 
   /* Start with the current buffer and length. */
@@ -22,13 +22,21 @@ uint8_t *sha512_append_data(uint8_t *data, uint64_t data_length, uint64_t secret
   *new_length = data_length;
 
   result[(*new_length)++] = 0x80;
-  while(((*new_length + secret_length) % SHA512_BLOCK) != 56)
+  while(((*new_length + secret_length) % SHA512_BLOCK) != 112)
     result[(*new_length)++] = 0x00;
 
   /* Convert the original length to bits so we can append it. */
   bit_length = (secret_length + data_length) * 8;
 
-  /* Set the last 4 bytes of result to the new length. */
+  /* Set the last 16 bytes of result to the new length. */
+  result[(*new_length)++] = 0;
+  result[(*new_length)++] = 0;
+  result[(*new_length)++] = 0;
+  result[(*new_length)++] = 0;
+  result[(*new_length)++] = 0;
+  result[(*new_length)++] = 0;
+  result[(*new_length)++] = 0;
+  result[(*new_length)++] = 0;
   result[(*new_length)++] = (bit_length >> 56) & 0x000000FF;
   result[(*new_length)++] = (bit_length >> 48) & 0x000000FF;
   result[(*new_length)++] = (bit_length >> 40) & 0x000000FF;
@@ -63,9 +71,9 @@ void sha512_gen_signature_evil(uint64_t secret_length, uint64_t data_length, uin
   SHA512_Init(&c);
 
   /* We need to add bytes equal to the original size of the message, plus
-   * padding. The reason we add 8 is because the padding is based on the
-   * (length % 56) (8 bytes before a full block size). */
-  original_data_length = (((secret_length + data_length + 8) / SHA512_BLOCK) * SHA512_BLOCK) + SHA512_BLOCK;
+   * padding. The reason we add 16 is because the padding is based on the
+   * (length % 112) (16 bytes before a full block size). */
+  original_data_length = (((secret_length + data_length + 16) / SHA512_BLOCK) * SHA512_BLOCK) + SHA512_BLOCK;
   for(i = 0; i < original_data_length; i++)
     SHA512_Update(&c, "A", 1);
 
@@ -105,7 +113,7 @@ static void sha512_test_extension()
   uint8_t *data      = (uint8_t*)"DATA";
   uint8_t *append    = (uint8_t*)"APPEND";
   uint8_t *new_data;
-  uint64_t  new_length;
+  uint64_t new_length;
 
   uint8_t original_signature[SHA512_DIGEST_LENGTH];
   uint8_t new_signature[SHA512_DIGEST_LENGTH];
@@ -126,7 +134,7 @@ static void sha512_test_extension()
 
   free(new_data);
 }
-#if 0
+
 static void sha512_test_lengths()
 {
   uint8_t *secret    = (uint8_t*)"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
@@ -196,11 +204,10 @@ static void sha512_test_lengths()
     free(new_data);
   }
 }
-#endif
 
 void sha512_test()
 {
   sha512_test_extension();
-/*  sha512_test_lengths();*/
+  sha512_test_lengths();
 }
 
