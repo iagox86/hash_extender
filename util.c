@@ -49,4 +49,14 @@ void print_hex_fancy(uint8_t *data, uint64_t length)
   printf("\nLength: 0x%X (%d)\n", (int)length, (int)length);
 }
 
+void DIE(char *msg)
+{
+  fprintf(stderr, "FATAL ERROR: %s\n", msg);
+  exit(1);
+}
+
+void DIE_MEM()
+{
+  DIE("Out of memory");
+}
 

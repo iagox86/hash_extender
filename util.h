@@ -8,5 +8,7 @@
 
 void print_hex(unsigned char *data, unsigned int length);
 void print_hex_fancy(uint8_t *data, uint64_t length);
+void DIE(char *msg);
+void DIE_MEM();
 
 #endif

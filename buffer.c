@@ -18,20 +18,10 @@
 #endif
 
 #include "buffer.h"
+#include "util.h"
 
 /* The initial max length of the string */
 #define STARTING_LENGTH 1
-
-static void DIE(char *msg)
-{
-  fprintf(stderr, "FATAL ERROR: %s\n", msg);
-  exit(1);
-}
-
-static void DIE_MEM()
-{
-  DIE("Out of memory");
-}
 
 static uint16_t host_to_network_16(uint16_t data)
 {
