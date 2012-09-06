@@ -69,10 +69,11 @@ uint8_t *to_raw(char *str, format_t format, uint64_t *out_length)
 
     while(i < strlen(str))
     {
-      if(str[i] == '%' && (i + 2) < strlen(str) && isxdigit(str[i + 1]) && isxdigit(str[i + 2]))
+      /* The typecasts to 'int' here are to fix warnings from cygwin. */
+      if(str[i] == '%' && (i + 2) < strlen(str) && isxdigit((int)str[i + 1]) && isxdigit((int)str[i + 2]))
       {
-        c =  (isdigit(str[i + 1]) ? (str[i + 1] - '0') : (tolower(str[i + 1]) - 'a' + 10)) << 4;
-        c |= (isdigit(str[i + 2]) ? (str[i + 2] - '0') : (tolower(str[i + 2]) - 'a' + 10)) << 0;
+        c =  (isdigit((int)str[i + 1]) ? (str[i + 1] - '0') : (tolower((int)str[i + 1]) - 'a' + 10)) << 4;
+        c |= (isdigit((int)str[i + 2]) ? (str[i + 2] - '0') : (tolower((int)str[i + 2]) - 'a' + 10)) << 0;
         buffer_add_int8(b, c);
         i += 3;
       }

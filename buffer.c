@@ -5,6 +5,7 @@
  * (See LICENSE.txt)
  */
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -794,7 +795,7 @@ void buffer_print(buffer_t *buffer)
 	uint64_t i, j;
 	if(!buffer->valid)
 		DIE("Program attempted to use deleted buffer.");
-	printf("Position = %ld\n", buffer->position);
+	printf("Position = %"PRId64"\n", buffer->position);
 
 	printf("Buffer contents:");
 	for(i = 0; i < length; i++)
@@ -828,7 +829,7 @@ void buffer_print(buffer_t *buffer)
 	for(i = length - (length % 16); i < length; i++)
 		printf("%c", get_character_from_byte(buffer->data[i]));
 
-	printf("\nLength: 0x%lX (%ld)\n", length, length);
+	printf("\nLength: 0x%"PRIX64" (%"PRId64")\n", length, length);
 }
 
 /* Returns a pointer to the actual buffer */
