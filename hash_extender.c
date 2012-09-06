@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <getopt.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -16,10 +17,10 @@
 /* Input and output formats. */
 typedef enum {
   FORMAT_NONE = 1,
-  FORMAT_RAW,
-  FORMAT_HTML,
-  FORMAT_HEX,
-  FORMAT_CSTR
+  FORMAT_RAW  = 2,
+  FORMAT_HTML = 3,
+  FORMAT_HEX  = 4,
+  FORMAT_CSTR = 5
 } format_t;
 
 /* Define the various options we can set. */
@@ -250,17 +251,93 @@ uint8_t *read_file(char *filename, uint64_t *out_length)
   return buffer_get(b, out_length);
 }
 
-void output(options_t *options, char *type, uint64_t secret_length, uint8_t *new_data, uint64_t new_data_length, uint8_t *new_signature, uint64_t new_signature_length)
+void output_format(format_t format, uint8_t *data, uint64_t data_length)
 {
   uint64_t i;
 
-  printf("%-10s", type);
-  for(i = 0; i < new_signature_length; i++)
-    printf("%02x", new_signature[i]);
-  printf(" ");
-  for(i = 0; i < new_data_length; i++)
-    printf("%02x", new_data[i]);
-  printf("\n");
+  if(format == FORMAT_NONE)
+  {
+  }
+  else if(format == FORMAT_RAW)
+  {
+    for(i = 0; i < data_length; i++)
+      printf("%c", data[i]);
+  }
+  else if(format == FORMAT_HTML)
+  {
+    for(i = 0; i < data_length; i++)
+    {
+      if(isalpha(data[i]) || isdigit(data[i]))
+      {
+        printf("%c", data[i]);
+      }
+      else if(data[i] == ' ')
+      {
+        printf(" ");
+      }
+      else
+      {
+        printf("%%%02x", data[i]);
+      }
+    }
+  }
+  else if(format == FORMAT_HEX)
+  {
+    for(i = 0; i < data_length; i++)
+      printf("%02x", data[i]);
+  }
+  else if(format ==  FORMAT_CSTR)
+  {
+    for(i = 0; i < data_length; i++)
+    {
+      if(isalpha(data[i]) || isdigit(data[i]))
+      {
+        printf("%c", data[i]);
+      }
+      else if(data[i] == ' ')
+      {
+        printf(" ");
+      }
+      else
+      {
+        printf("\\x%02x", data[i]);
+      }
+    }
+  }
+}
+
+void output(options_t *options, char *type, uint64_t secret_length, uint8_t *new_data, uint64_t new_data_length, uint8_t *new_signature, uint64_t new_signature_length)
+{
+  if(options->quiet)
+  {
+    output_format(options->out_signature, new_signature, new_signature_length);
+    output_format(options->out_str, new_data, new_data_length);
+  }
+  else if(options->out_table)
+  {
+    printf("%-9s ", type);
+    printf("%4"PRId64"d ", secret_length);
+    output_format(options->out_signature, new_signature, new_signature_length);
+    printf(" ");
+    output_format(options->out_str, new_data, new_data_length);
+    printf("\n");
+  }
+  else
+  {
+    printf("Type: %s\n", type);
+
+    printf("Secret length: %"PRId64"\n", secret_length);
+
+    printf("New signature: ");
+    output_format(options->out_signature, new_signature, new_signature_length);
+    printf("\n");
+
+    printf("New string: ");
+    output_format(options->out_str, new_data, new_data_length);
+    printf("\n");
+
+    printf("\n");
+  }
 }
 
 void go(options_t *options)
@@ -373,8 +450,7 @@ void usage(char *program)
   printf("\n");
   printf("OUTPUT OPTIONS\n");
   printf("--table\n");
-  printf("      Output the string in a table format. Not compatible with the other output\n");
-  printf("      options.\n");
+  printf("      Output the string in a table format.\n");
   printf("--out-str=<raw|html|hex|cstr|none>\n");
   printf("      Output the string as raw, html (%%nn), hex, c-style string (\\xNN), or not\n");
   printf("      output at all. Default: hex.\n");
@@ -618,13 +694,17 @@ int main(int argc, char *argv[])
   {
     error(argv[0], "--file amd --str-format cannot be used together");
   }
+  if(options.append_raw == NULL)
+  {
+    error(argv[0], "--append is required");
+  }
   if(options.signature_raw == NULL)
   {
     error(argv[0], "--signature is required");
   }
-  if(options.out_table && (options.out_str || options.out_signature))
+  if(options.out_table && options.quiet)
   {
-    error(argv[0], "--table is not compatible with --out-str and --out-signature");
+    error(argv[0], "--table and --quiet are not compatible");
   }
 
   /* Set some sane defaults. */
@@ -676,31 +756,47 @@ int main(int argc, char *argv[])
   /* Sanity check the length of the signature. */
   if(options.format_all)
   {
-    options.format_md4       = (options.signature_length == 16);
-    options.format_md5       = (options.signature_length == 16);
-    options.format_ripemd160 = (options.signature_length == 20);
-    options.format_sha       = (options.signature_length == 20);
-    options.format_sha1      = (options.signature_length == 20);
-    options.format_sha256    = (options.signature_length == 32);
-    options.format_sha512    = (options.signature_length == 64);
-    options.format_whirlpool = (options.signature_length == 20);
+    options.format_md4       = (options.signature_length == MD4_DIGEST_LENGTH);
+    options.format_md5       = (options.signature_length == MD5_DIGEST_LENGTH);
+    options.format_ripemd160 = (options.signature_length == RIPEMD160_DIGEST_LENGTH);
+    options.format_sha       = (options.signature_length == SHA_DIGEST_LENGTH);
+    options.format_sha1      = (options.signature_length == SHA_DIGEST_LENGTH);
+    options.format_sha256    = (options.signature_length == SHA256_DIGEST_LENGTH);
+    options.format_sha512    = (options.signature_length == SHA512_DIGEST_LENGTH);
+    options.format_whirlpool = (options.signature_length == WHIRLPOOL_DIGEST_LENGTH);
   }
-  else if(options.format_md4 && options.signature_length != 16)
-    error(argv[0], "md4's signature needs to be 16 bytes");
-  else if(options.format_md5 && options.signature_length != 16)
-    error(argv[0], "md5's signature needs to be 16 bytes");
-  else if(options.format_ripemd160 && options.signature_length != 20)
-    error(argv[0], "ripemd160's signature needs to be 20 bytes");
-  else if(options.format_sha && options.signature_length != 20)
-    error(argv[0], "sha's signature needs to be 20 bytes");
-  else if(options.format_sha1 && options.signature_length != 20)
-    error(argv[0], "sha1's signature needs to be 20 bytes");
-  else if(options.format_sha256 && options.signature_length != 32)
-    error(argv[0], "sha256's signature needs to be 32 bytes");
-  else if(options.format_sha512 && options.signature_length != 64)
-    error(argv[0], "sha512's signature needs to be 64 bytes");
-  else if(options.format_whirlpool && options.signature_length != 64)
-    error(argv[0], "whirlpool's signature needs to be 64 bytes");
+  else if(options.format_md4 && options.signature_length != MD4_DIGEST_LENGTH)
+  {
+    fprintf(stderr, "md4's signature needs to be %d bytes", MD4_DIGEST_LENGTH);
+  }
+  else if(options.format_md5 && options.signature_length != MD5_DIGEST_LENGTH)
+  {
+    fprintf(stderr, "md5's signature needs to be %d bytes", MD5_DIGEST_LENGTH);
+  }
+  else if(options.format_ripemd160 && options.signature_length != RIPEMD160_DIGEST_LENGTH)
+  {
+    fprintf(stderr, "ripemd160's signature needs to be %d bytes", RIPEMD160_DIGEST_LENGTH);
+  }
+  else if(options.format_sha && options.signature_length != SHA_DIGEST_LENGTH)
+  {
+    fprintf(stderr, "sha's signature needs to be %d bytes", SHA_DIGEST_LENGTH);
+  }
+  else if(options.format_sha1 && options.signature_length != SHA_DIGEST_LENGTH)
+  {
+    fprintf(stderr, "sha1's signature needs to be %d bytes", SHA_DIGEST_LENGTH);
+  }
+  else if(options.format_sha256 && options.signature_length != SHA256_DIGEST_LENGTH)
+  {
+    fprintf(stderr, "sha256's signature needs to be %d bytes", SHA256_DIGEST_LENGTH);
+  }
+  else if(options.format_sha512 && options.signature_length != SHA512_DIGEST_LENGTH)
+  {
+    fprintf(stderr, "sha512's signature needs to be %d bytes", SHA512_DIGEST_LENGTH);
+  }
+  else if(options.format_whirlpool && options.signature_length != WHIRLPOOL_DIGEST_LENGTH)
+  {
+    fprintf(stderr, "whirlpool's signature needs to be %d bytes", WHIRLPOOL_DIGEST_LENGTH);
+  }
 
   if(options.format_md4 == 0 &&
       options.format_md5 == 0 &&
