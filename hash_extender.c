@@ -1,6 +1,8 @@
+#include <ctype.h>
 #include <getopt.h>
 #include <stdio.h>
 
+#include "buffer.h"
 #include "hash_extender_md4.h"
 #include "hash_extender_md5.h"
 #include "hash_extender_ripemd160.h"
@@ -21,6 +23,7 @@ typedef enum {
 typedef struct {
   char     *str;
   format_t  str_format;
+  char     *file;
   char     *signature;
   format_t  signature_format;
 
@@ -43,6 +46,64 @@ typedef struct {
   uint8_t   quiet;
 } options_t;
 
+uint8_t *to_raw(char *str, format_t format, uint64_t *out_length)
+{
+  if(format == FORMAT_NONE)
+  {
+    *out_length = 0;
+    return malloc(0);
+  }
+  else if(format == FORMAT_RAW)
+  {
+    uint8_t *out = malloc(strlen(str) + 1);
+    memcpy(out, str, strlen(str) + 1);
+    *out_length = strlen(str);
+
+    return out;
+  }
+  else if(format == FORMAT_HTML)
+  {
+    buffer_t *b = buffer_create(BO_HOST);
+    uint64_t i = 0;
+    uint8_t c;
+
+    while(i < strlen(str))
+    {
+      if(str[i] == '%' && (i + 2) < strlen(str) && isxdigit(str[i + 1]) && isxdigit(str[i + 2]))
+      {
+        c =  (isdigit(str[i + 1]) ? (str[i + 1] - '0') : (tolower(str[i + 1]) - 'a' + 10)) << 4;
+        c |= (isdigit(str[i + 2]) ? (str[i + 2] - '0') : (tolower(str[i + 2]) - 'a' + 10)) << 0;
+        buffer_add_int8(b, c);
+        i += 3;
+      }
+      else if(str[i] == '+')
+      {
+        buffer_add_int8(b, ' ');
+        i++;
+      }
+      else
+      {
+        buffer_add_int8(b, str[i]);
+        i++;
+      }
+    }
+
+    buffer_print(b);
+    return buffer_get(b, out_length);
+  }
+  else if(format == FORMAT_HEX)
+  {
+  }
+  else if(format == FORMAT_CSTR)
+  {
+  }
+  else
+  {
+  }
+
+  return NULL;
+}
+
 void usage(char *program)
 {
   printf("\n");
@@ -54,14 +115,17 @@ void usage(char *program)
   printf("\n");
   printf("See LICENSE.txt for license information.\n");
   printf("\n");
-  printf("Usage: %s --str=<str> --signature=<signature> --format=<format> [options]\n", program);
+  printf("Usage: %s <--str=<str>|--file=<file>> --signature=<signature> --format=<format> [options]\n", program);
   printf("\n");
   printf("INPUT OPTIONS\n");
-  printf("-s --str=<str> [REQUIRED]\n");
+  printf("-s --str=<str>\n");
   printf("      The original string that we're going to extend.\n");
   printf("--str-format=<raw|html|hex>\n");
   printf("      The format the string is being passed in as. Default: raw.\n");
-  printf("-S --signature=<sig> [REQUIRED]\n");
+  printf("--file=<file>\n");
+  printf("      As an alternative to specifying a string, this reads the original string\n");
+  printf("      as a file.\n");
+  printf("-S --signature=<sig>\n");
   printf("      The original signature.\n");
   printf("--signature-format=<raw|html|hex>\n");
   printf("      The format the signature is being passed in as. Default: hex.\n");
@@ -104,6 +168,14 @@ void error(char *program, char *message)
 
 int main(int argc, char *argv[])
 {
+  char *test_str = "this%00 %fg is%FF %25 test %00%a";
+  uint64_t length;
+
+  to_raw(test_str, FORMAT_HTML, &length);
+/* uint8_t *to_raw(char *str, format_t format, uint64_t *out_length) */
+
+  return 0;
+#if 0
   options_t   options;
   char        c;
   int         option_index;
@@ -113,6 +185,7 @@ int main(int argc, char *argv[])
   {
     {"str",              required_argument, 0, 0}, /* Input string. */
     {"s",                required_argument, 0, 0},
+    {"file",             required_argument, 0, 0}, /* Input file. */
     {"str-format",       required_argument, 0, 0}, /* Input string format. */
     {"signature",        required_argument, 0, 0}, /* Input signature. */
     {"S",                required_argument, 0, 0},
@@ -158,6 +231,10 @@ int main(int argc, char *argv[])
             options.str_format = FORMAT_HTML;
           else
             error(argv[0], "Unknown option passed to --str-format");
+        }
+        else if(!strcmp(option_name, "file"))
+        {
+          options.file = optarg;
         }
         else if(!strcmp(option_name, "signature") || !strcmp(option_name, "S"))
         {
@@ -280,9 +357,9 @@ int main(int argc, char *argv[])
   }
 
   /* Sanity checks. */
-  if(options.str == NULL)
+  if(options.str == NULL && options.file == NULL)
   {
-    error(argv[0], "--str is required");
+    error(argv[0], "--str or --file is required");
   }
 
   if(options.signature == NULL)
@@ -317,5 +394,6 @@ int main(int argc, char *argv[])
   /* TODO: Check the length of the signature. */
 
   return 0;
+#endif
 }
 
