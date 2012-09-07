@@ -18,6 +18,11 @@
 #include "hash_extender_whirlpool.h"
 #endif
 
+#define NAME "Hash Extender"
+#define VERSION "0.01"
+#define AUTHOR "Ron Bowes"
+#define EMAIL "ron@skullsecurity.net"
+
 /* Input and output formats. */
 typedef enum {
   FORMAT_NONE = 1,
@@ -490,6 +495,8 @@ int main(int argc, char *argv[])
     {"test",                 no_argument,       0, 0}, /* Test. */
     {"quiet",                no_argument,       0, 0}, /* Quiet. */
     {"q",                    no_argument,       0, 0},
+    {"version",              no_argument,       0, 0}, /* Version. */
+    {"V",                    no_argument,       0, 0},
     {0, 0, 0, 0}
   };
 
@@ -650,6 +657,11 @@ int main(int argc, char *argv[])
         else if(!strcmp(option_name, "quiet") || !strcmp(option_name, "q"))
         {
           options.quiet = 1;
+        }
+        else if(!strcmp(option_name, "version") || !strcmp(option_name, "V"))
+        {
+          printf("%s v%s by %s <%s>\n", NAME, VERSION, AUTHOR, EMAIL);
+          exit(0);
         }
         else
         {
