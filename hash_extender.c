@@ -407,18 +407,18 @@ void usage(char *program)
   printf("INPUT OPTIONS\n");
   printf("-d --data=<data>\n");
   printf("      The original string that we're going to extend.\n");
-  printf("--data-format=<raw|html|hex>\n");
+  printf("--data-format=<raw|html|hex|cstr>\n");
   printf("      The format the string is being passed in as. Default: raw.\n");
   printf("--file=<file>\n");
   printf("      As an alternative to specifying a string, this reads the original string\n");
   printf("      as a file.\n");
   printf("-s --signature=<sig>\n");
   printf("      The original signature.\n");
-  printf("--signature-format=<raw|html|hex>\n");
+  printf("--signature-format=<raw|html|hex|cstr>\n");
   printf("      The format the signature is being passed in as. Default: hex.\n");
   printf("-a --append=<data>\n");
   printf("      The data to append to the string. Default: raw.\n");
-  printf("--append-format=<raw|html|hex>\n");
+  printf("--append-format=<raw|html|hex|cstr>\n");
   printf("-f --format=<all|md4|md5|ripemd160|sha|sha1|sha256|sha512|whirlpool> [REQUIRED]\n");
   printf("      The hash_type of the signature. This can be given multiple times if you\n");
   printf("      want to try multiple signatures. 'all' will base the chosen types off\n");
@@ -515,6 +515,8 @@ int main(int argc, char *argv[])
             options.data_format = FORMAT_HEX;
           else if(!strcasecmp(optarg, "html"))
             options.data_format = FORMAT_HTML;
+          else if(!strcasecmp(optarg, "cstr"))
+            options.data_format = FORMAT_CSTR;
           else
             error(argv[0], "Unknown option passed to --data-format");
         }
@@ -534,6 +536,8 @@ int main(int argc, char *argv[])
             options.append_format = FORMAT_HEX;
           else if(!strcasecmp(optarg, "html"))
             options.append_format = FORMAT_HTML;
+          else if(!strcasecmp(optarg, "cstr"))
+            options.append_format = FORMAT_CSTR;
           else
             error(argv[0], "Unknown option passed to --append-format");
         }
@@ -549,6 +553,8 @@ int main(int argc, char *argv[])
             options.signature_format = FORMAT_HEX;
           else if(!strcasecmp(optarg, "html"))
             options.signature_format = FORMAT_HTML;
+          else if(!strcasecmp(optarg, "cstr"))
+            options.signature_format = FORMAT_CSTR;
           else
             error(argv[0], "Unknown option passed to --signature-format");
         }
