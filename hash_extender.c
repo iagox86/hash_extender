@@ -432,12 +432,10 @@ void usage(char *program)
   printf("OUTPUT OPTIONS\n");
   printf("--table\n");
   printf("      Output the string in a table format.\n");
-  printf("--out-data=<raw|html|hex|cstr|none>\n");
-  printf("      Output the string as raw, html (%%nn), hex, c-style string (\\xNN), or not\n");
-  printf("      output at all. Default: hex.\n");
-  printf("--out-signature=<raw|html|hex|cstr|none>\n");
-  printf("      Output the signature as raw, html (%%nn), hex, c-style string (\\xNN) or not\n");
-  printf("      output at all. Default: hex.\n");
+  printf("--out-data=<raw|html|html-pure|hex|cstr|cstr-pure|none>\n");
+  printf("      Output data format.\n");
+  printf("--out-signature=<raw|htmlhtml-pure||hex|cstr|cstr-pure|none>\n");
+  printf("      Output signature format.\n");
   printf("\n");
   printf("OTHER OPTIONS\n");
   printf("-h --help \n");
