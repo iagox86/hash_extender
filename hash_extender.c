@@ -348,7 +348,6 @@ void output(options_t *options, char *type, uint64_t secret_length, uint8_t *new
   else if(options->out_table)
   {
     printf("%-9s ", type);
-    printf("%4"PRId64"d ", secret_length);
     output_format(options->out_signature, new_signature, new_signature_length);
     printf(" ");
     output_format(options->out_data, new_data, new_data_length);

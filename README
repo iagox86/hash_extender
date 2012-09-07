@@ -1,0 +1,188 @@
+Hash Extender
+By Ron Bowes <ron@skullsecurity.net>
+
++-------+
+| INTRO |
++-------+
+This tool implements a hash length extension attack against a bunch of different
+hash algorithms:
+- md4
+- md5
+- ripemd160
+- sha
+- sha1
+- sha256
+- sha512
+- whirlpool
+
+I'm more than happy to extend this to cover other hashtypes as well, provided
+they are "vulnerable" to this attack. Please contact me if you have other
+candidates and I'll add them ASAP!
+
++------------+
+| THE ATTACK |
++------------+
+An application may be susceptible to a hash length extension attack if it
+prepends a secret value to a string, hashes it, and entrusts the user with the
+string and the hash, but not the secret. Assuming the algorithm is vulnerable
+to this attack, the attacker can simply pick up where the hash left off -
+that is, build a new hash context and set its state to the hash - and continue
+hashing data.
+
+In other words, given data with an unknown prefix and a hash, an attacker can
+append to the data and generate a valid signature.
+
+To show this step by step, let's say we have a secret of 'secret', data of
+'data', and we want to append the string 'append'. Let's use md5 for this
+eample. First, let's take a look at the original signature:
+md5('secret' + 'data') = 6036708eba0d11f6ef52ad44e8b74d5b
+
+The attacker knows the data and the hash, but doesn't know that the secret is
+'secret'. The attacker wishes to add the text 'append' to the end of 'data',
+and to generate a valid hash that will pass muster. So, there are two things
+that he needs to calculate separately - the new data (with 'append' appended)
+and the new signature.
+
+When 'secret'+'data' is hashed, it's first padded to a full block size. On md5
+blocks are 64 bytes long. The padding is a '1' bit, followed by enough '0' bits
+that the length is congruent to 56 bytes (mod 64). In other words, it's padded
+by '0' bits until (length % 64) = 56. Then the length of the original string
+(0x0a) in bits (0x50) as an 8-byte value (56 00 00 00 00 00 00 00) is appended
+to the string, making it an even multiple of 64. Once padded, the final block
+is hashed and the result is returned.
+
+It's worth stopping here to note: some algorithms have a block size that isn't
+64 bytes (sha512 has a 128-byte blocksize), some algorithms have a different 
+appended length (sha512 has a 16-byte length appended, and whirlpool has a 32-
+byte length appended), and some hash algorithms use big endian to store the
+length (sha, sha1, sha256, sha512, and whirlpool use big endian, whereas md4,
+md5, and ripemd160 use little endian).
+
+Now that we know how it's padded, we can generate the exact string that was
+put through md5, after padding:
+secretdata%80%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%50%00%00%00%00%00%00%00
+
+That's the exact data that was hashed, which means we know the md5 of that exact
+string. Let's break it up into what each part means:
+To break it up:
+- "secret" - the original secret.
+- "data" - the original data.
+- "%80"  - the leading '1' bit for the padding.
+- "%00" * 45 - Enough padding that "secretdata" + padding = 56 bytes.
+- "%50%00%00%00%00%00%00%00" - The length, in bits, of the original data (10 *
+  8 = 80 = 0x50), encoded in little endian.
+
+Let's call that string "pdata", for the sake of simpilicity.
+
+Our goal is to add "append" to the string, then calculate md5(pdata + append).
+It turns out, that's possible without knowing "secret"!
+
+First, the value we're going to send to the server will be pdata without the
+"secret" value and with "append" appended::
+data%80%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%50%00%00%00%00%00%00%00append
+
+The server will prepend "secret" and attempt to hash it as:
+secretdata%80%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%50%00%00%00%00%00%00%00append
+
+And wind up with:
+6ee582a1669ce442f3719c47430dadee
+
+You can test it with the following code:
+<pre>
+  int main(int argc, const char *argv[])
+  {
+    MD5_CTX c;
+    unsigned char buffer[MD5_DIGEST_LENGTH];
+    int i;
+
+    MD5_Init(&c);
+    MD5_Update(&c, "secret", 6);
+    MD5_Update(&c, "data", 4);
+    MD5_Update(&c, "\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+                   "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+                   "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+                   "\x00\x00\x00\x00", 46);
+    MD5_Update(&c, "\x50\x00\x00\x00\x00\x00\x00\x00", 8);
+    MD5_Update(&c, "append", 6);
+    MD5_Final(buffer, &c);
+
+    for (i = 0; i < 16; i++) {
+      printf("%02x", buffer[i]);
+    }
+    printf("\n");
+    return 0;
+  }
+</pre>
+
+Now, that's the signature that the server generates. How do *we* generate it?
+
+Well, first, we have to look at what we have: the data, the appended data, and
+the output of the hash function. It turns out, the output from any of these
+hash functions is nearly the entire state, and is alllllmost enough information
+to re-create it completely. The only thing we don't have is the length, because
+we don't know the length of 'secret'. It turns out, however, that the length
+doesn't usually matter (unless it's close to a block boundary).
+
+Basically, we want to create a md5 context, ensure that the hash's length is
+appropriate, then replace the current state with the state from the
+the final state of the original hash, The code to do this is basically:
+
+<pre>
+  unsigned char buffer[MD5_DIGEST_LENGTH];
+  MD5_CTX c;
+  MD5_Init(&c);
+  MD5_Update(&c, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", 64);
+  c.A = ntonl(0x6036708e); /* <-- This is the hash we already had */
+  c.B = ntonl(0xba0d11f6);
+  c.C = ntonl(0xef52ad44);
+  c.D = ntonl(0xe8b74d5b);
+  MD5_Update(&c, "append", 6); /* This is the appended data. */
+  MD5_Final(buffer, &c);
+</pre>
+
+The the output is, just like before:
+6ee582a1669ce442f3719c47430dadee
+
+So, now we have this string:
+data%80%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%50%00%00%00%00%00%00%00append
+
+And this signature:
+6ee582a1669ce442f3719c47430dadee
+
+Which can be generated legitimately, with the secret, and also without the
+secret by replacing the state!
+
++----------+
+| THE TOOL |
++----------+
+When I wrote this example, I screwed up the code about 1000 times with the
+wrong sizes, or values, or endianness, or various other problems. It's
+ridiculous! So, I wrote a tool that abstracts everything. You give it the
+original data, the length of the signature, and what you want to append, and it
+spits out the new data and the new signature.
+
+Here's an example of its use:
+$ ./hash_extender --data data --secret 6 --append append --signature 6036708eba0d11f6ef52ad44e8b74d5b --out-data-format html --format md5
+Type: md5
+Secret length: 6
+New signature: 6ee582a1669ce442f3719c47430dadee
+New string: data%80%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00P%00%00%00%00%00%00%00append
+
+If you're unsure about the hash type, you can let it try different types by
+leaving off the --format argument. I recommend using the --table argument as
+well:
+
+$ ./hash_extender --data data --secret 6 --append append --signature 6036708eba0d11f6ef52ad44e8b74d5b --out-data-format html --table
+md4       89df68618821cd4c50dfccd57c79815b data%80%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00P%00%00%00%00%00%00%00append
+md5       6ee582a1669ce442f3719c47430dadee data%80%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00P%00%00%00%00%00%00%00append
+
+
+|------------------------------------------------------------------------------|
+
+
+
+
+
+
+
+
