@@ -61,10 +61,10 @@ hash_type_t hash_types[] = {
 
 /* Define the various options we can set. */
 typedef struct {
-  char     *str_raw;
-  format_t  str_format;
-  uint8_t  *str;
-  uint64_t  str_length;
+  char     *data_raw;
+  format_t  data_format;
+  uint8_t  *data;
+  uint64_t  data_length;
 
   char     *append_raw;
   format_t  append_format;
@@ -85,7 +85,7 @@ typedef struct {
   uint64_t  secret_max;
 
   uint8_t   out_table;
-  format_t  out_str;
+  format_t  out_data;
   format_t  out_signature;
 
   uint8_t   quiet;
@@ -340,7 +340,7 @@ void output(options_t *options, char *type, uint64_t secret_length, uint8_t *new
   if(options->quiet)
   {
     output_format(options->out_signature, new_signature, new_signature_length);
-    output_format(options->out_str, new_data, new_data_length);
+    output_format(options->out_data, new_data, new_data_length);
   }
   else if(options->out_table)
   {
@@ -348,7 +348,7 @@ void output(options_t *options, char *type, uint64_t secret_length, uint8_t *new
     printf("%4"PRId64"d ", secret_length);
     output_format(options->out_signature, new_signature, new_signature_length);
     printf(" ");
-    output_format(options->out_str, new_data, new_data_length);
+    output_format(options->out_data, new_data, new_data_length);
     printf("\n");
   }
   else
@@ -362,7 +362,7 @@ void output(options_t *options, char *type, uint64_t secret_length, uint8_t *new
     printf("\n");
 
     printf("New string: ");
-    output_format(options->out_str, new_data, new_data_length);
+    output_format(options->out_data, new_data, new_data_length);
     printf("\n");
 
     printf("\n");
@@ -374,7 +374,7 @@ void go(options_t *options)
   uint32_t i;
   size_t secret_length;
 
-  for(secret_length = options->secret_min; secret_length < options->secret_max + 1; secret_length++)
+  for(secret_length = options->secret_min; secret_length <= options->secret_max; secret_length++)
   {
     uint8_t *new_data;
     uint8_t new_signature[MAX_DIGEST_LENGTH];
@@ -384,8 +384,8 @@ void go(options_t *options)
     {
       if(options->formats[i])
       {
-        new_data = hash_types[i].append_data(options->str, options->str_length, secret_length, options->append, options->append_length, &new_length);
-        hash_types[i].gen_signature_evil(secret_length, options->str_length, options->signature, options->append, options->append_length, new_signature);
+        new_data = hash_types[i].append_data(options->data, options->data_length, secret_length, options->append, options->append_length, &new_length);
+        hash_types[i].gen_signature_evil(secret_length, options->data_length, options->signature, options->append, options->append_length, new_signature);
         output(options, hash_types[i].name, secret_length, new_data, new_length, new_signature, hash_types[i].hash_size);
         free(new_data);
       }
@@ -404,17 +404,17 @@ void usage(char *program)
   printf("\n");
   printf("See LICENSE.txt for license information.\n");
   printf("\n");
-  printf("Usage: %s <--str=<str>|--file=<file>> --signature=<signature> --format=<format> [options]\n", program);
+  printf("Usage: %s <--data=<data>|--file=<file>> --signature=<signature> --format=<format> [options]\n", program);
   printf("\n");
   printf("INPUT OPTIONS\n");
-  printf("-s --str=<str>\n");
+  printf("-d --data=<data>\n");
   printf("      The original string that we're going to extend.\n");
-  printf("--str-format=<raw|html|hex>\n");
+  printf("--data-format=<raw|html|hex>\n");
   printf("      The format the string is being passed in as. Default: raw.\n");
   printf("--file=<file>\n");
   printf("      As an alternative to specifying a string, this reads the original string\n");
   printf("      as a file.\n");
-  printf("-S --signature=<sig>\n");
+  printf("-s --signature=<sig>\n");
   printf("      The original signature.\n");
   printf("--signature-format=<raw|html|hex>\n");
   printf("      The format the signature is being passed in as. Default: hex.\n");
@@ -435,7 +435,7 @@ void usage(char *program)
   printf("OUTPUT OPTIONS\n");
   printf("--table\n");
   printf("      Output the string in a table format.\n");
-  printf("--out-str=<raw|html|hex|cstr|none>\n");
+  printf("--out-data=<raw|html|hex|cstr|none>\n");
   printf("      Output the string as raw, html (%%nn), hex, c-style string (\\xNN), or not\n");
   printf("      output at all. Default: hex.\n");
   printf("--out-signature=<raw|html|hex|cstr|none>\n");
@@ -470,15 +470,15 @@ int main(int argc, char *argv[])
 
   struct option long_options[] =
   {
-    {"str",              required_argument, 0, 0}, /* Input string. */
-    {"s",                required_argument, 0, 0},
+    {"data",             required_argument, 0, 0}, /* Input string. */
+    {"d",                required_argument, 0, 0},
     {"file",             required_argument, 0, 0}, /* Input file. */
-    {"str-format",       required_argument, 0, 0}, /* Input string format. */
+    {"data-format",      required_argument, 0, 0}, /* Input string format. */
     {"append",           required_argument, 0, 0}, /* Append string. */
     {"a",                required_argument, 0, 0}, 
     {"append-format",    required_argument, 0, 0}, /* Append format. */
     {"signature",        required_argument, 0, 0}, /* Input signature. */
-    {"S",                required_argument, 0, 0},
+    {"s",                required_argument, 0, 0},
     {"signature-format", required_argument, 0, 0}, /* Input signature format. */
     {"format",           required_argument, 0, 0}, /* Hash format. */
     {"f",                required_argument, 0, 0},
@@ -487,7 +487,7 @@ int main(int argc, char *argv[])
     {"secret-min",       required_argument, 0, 0}, /* Secret min length. */
     {"secret-max",       required_argument, 0, 0}, /* Secret max length. */
     {"table",            no_argument,       0, 0}, /* Output as a table. */
-    {"out-str",          required_argument, 0, 0}, /* Output string format. */
+    {"out-data",         required_argument, 0, 0}, /* Output string format. */
     {"out-signature",    required_argument, 0, 0}, /* Output signature format. */
     {"help",             no_argument,       0, 0}, /* Help. */
     {"h",                no_argument,       0, 0},
@@ -510,20 +510,20 @@ int main(int argc, char *argv[])
       case 0:
         option_name = long_options[option_index].name;
 
-        if(!strcmp(option_name, "str") || !strcmp(option_name, "s"))
+        if(!strcmp(option_name, "data") || !strcmp(option_name, "d"))
         {
-          options.str_raw = optarg;
+          options.data_raw = optarg;
         }
-        else if(!strcmp(option_name, "str-format"))
+        else if(!strcmp(option_name, "data-format"))
         {
           if(!strcasecmp(optarg, "raw"))
-            options.str_format = FORMAT_RAW;
+            options.data_format = FORMAT_RAW;
           else if(!strcasecmp(optarg, "hex"))
-            options.str_format = FORMAT_HEX;
+            options.data_format = FORMAT_HEX;
           else if(!strcasecmp(optarg, "html"))
-            options.str_format = FORMAT_HTML;
+            options.data_format = FORMAT_HTML;
           else
-            error(argv[0], "Unknown option passed to --str-format");
+            error(argv[0], "Unknown option passed to --data-format");
         }
         else if(!strcmp(option_name, "file"))
         {
@@ -544,7 +544,7 @@ int main(int argc, char *argv[])
           else
             error(argv[0], "Unknown option passed to --append-format");
         }
-        else if(!strcmp(option_name, "signature") || !strcmp(option_name, "S"))
+        else if(!strcmp(option_name, "signature") || !strcmp(option_name, "s"))
         {
           options.signature_raw = optarg;
         }
@@ -594,20 +594,20 @@ int main(int argc, char *argv[])
         {
           options.out_table = 1;
         }
-        else if(!strcmp(option_name, "out-str"))
+        else if(!strcmp(option_name, "out-data"))
         {
           if(!strcasecmp(optarg, "raw"))
-            options.out_str = FORMAT_RAW;
+            options.out_data = FORMAT_RAW;
           else if(!strcasecmp(optarg, "html"))
-            options.out_str = FORMAT_HTML;
+            options.out_data = FORMAT_HTML;
           else if(!strcasecmp(optarg, "hex"))
-            options.out_str = FORMAT_HEX;
+            options.out_data = FORMAT_HEX;
           else if(!strcasecmp(optarg, "cstr"))
-            options.out_str = FORMAT_CSTR;
+            options.out_data = FORMAT_CSTR;
           else if(!strcasecmp(optarg, "none"))
-            options.out_str = FORMAT_NONE;
+            options.out_data = FORMAT_NONE;
           else
-            error(argv[0], "Unknown option passed to --out-str");
+            error(argv[0], "Unknown option passed to --out-data");
         }
         else if(!strcmp(option_name, "out-signature"))
         {
@@ -622,7 +622,7 @@ int main(int argc, char *argv[])
           else if(!strcasecmp(optarg, "none"))
             options.out_signature = FORMAT_NONE;
           else
-            error(argv[0], "Unknown option passed to --out-str");
+            error(argv[0], "Unknown option passed to --out-signature");
         }
         else if(!strcmp(option_name, "help") || !strcmp(option_name, "h"))
         {
@@ -658,17 +658,17 @@ int main(int argc, char *argv[])
   }
 
   /* Sanity checks. */
-  if(options.str_raw == NULL && options.filename == NULL)
+  if(options.data_raw == NULL && options.filename == NULL)
   {
-    error(argv[0], "--str or --file is required");
+    error(argv[0], "--data or --file is required");
   }
-  if(options.str_raw != NULL && options.filename != NULL)
+  if(options.data_raw != NULL && options.filename != NULL)
   {
-    error(argv[0], "--str and --file cannot be used together");
+    error(argv[0], "--data and --file cannot be used together");
   }
-  if(options.filename != NULL && options.str_format != 0)
+  if(options.filename != NULL && options.data_format != 0)
   {
-    error(argv[0], "--file amd --str-format cannot be used together");
+    error(argv[0], "--file amd --data-format cannot be used together");
   }
   if(options.append_raw == NULL)
   {
@@ -694,24 +694,24 @@ int main(int argc, char *argv[])
     error(argv[0], "--secret-min and --secret-max can't be used separately, please specify both.");
   }
 
-  if(options.str_format == 0)
-    options.str_format = FORMAT_RAW;
+  if(options.data_format == 0)
+    options.data_format = FORMAT_RAW;
   if(options.append_format == 0)
     options.append_format = FORMAT_RAW;
   if(options.signature_format == 0)
     options.signature_format = FORMAT_HEX;
-  if(options.out_str == 0)
-    options.out_str = FORMAT_HEX;
+  if(options.out_data == 0)
+    options.out_data = FORMAT_HEX;
   if(options.out_signature == 0)
     options.out_signature = FORMAT_HEX;
 
-  /* Convert the string appropriately. */
-  if(options.str_raw)
-    options.str = to_raw(options.str_raw, options.str_format, &options.str_length);
+  /* Convert the data appropriately. */
+  if(options.data_raw)
+    options.data = to_raw(options.data_raw, options.data_format, &options.data_length);
   else
-    options.str = read_file(options.filename, &options.str_length);
+    options.data = read_file(options.filename, &options.data_length);
 
-  /* Convert the appended string. */
+  /* Convert the appended data. */
   options.append = to_raw(options.append_raw, options.append_format, &options.append_length);
 
   /* Convert the signature. */
