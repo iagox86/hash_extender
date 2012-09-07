@@ -432,9 +432,9 @@ void usage(char *program)
   printf("OUTPUT OPTIONS\n");
   printf("--table\n");
   printf("      Output the string in a table format.\n");
-  printf("--out-data=<raw|html|html-pure|hex|cstr|cstr-pure|none>\n");
+  printf("--out-data-format=<raw|html|html-pure|hex|cstr|cstr-pure|none>\n");
   printf("      Output data format.\n");
-  printf("--out-signature=<raw|htmlhtml-pure||hex|cstr|cstr-pure|none>\n");
+  printf("--out-signature-format=<raw|htmlhtml-pure||hex|cstr|cstr-pure|none>\n");
   printf("      Output signature format.\n");
   printf("\n");
   printf("OTHER OPTIONS\n");
@@ -465,31 +465,31 @@ int main(int argc, char *argv[])
 
   struct option long_options[] =
   {
-    {"data",             required_argument, 0, 0}, /* Input string. */
-    {"d",                required_argument, 0, 0},
-    {"file",             required_argument, 0, 0}, /* Input file. */
-    {"data-format",      required_argument, 0, 0}, /* Input string format. */
-    {"append",           required_argument, 0, 0}, /* Append string. */
-    {"a",                required_argument, 0, 0}, 
-    {"append-format",    required_argument, 0, 0}, /* Append format. */
-    {"signature",        required_argument, 0, 0}, /* Input signature. */
-    {"s",                required_argument, 0, 0},
-    {"signature-format", required_argument, 0, 0}, /* Input signature format. */
-    {"format",           required_argument, 0, 0}, /* Hash format. */
-    {"f",                required_argument, 0, 0},
-    {"secret",           required_argument, 0, 0}, /* Secret length. */
-    {"l",                required_argument, 0, 0},
-    {"secret-min",       required_argument, 0, 0}, /* Secret min length. */
-    {"secret-max",       required_argument, 0, 0}, /* Secret max length. */
-    {"table",            no_argument,       0, 0}, /* Output as a table. */
-    {"out-data",         required_argument, 0, 0}, /* Output string format. */
-    {"out-signature",    required_argument, 0, 0}, /* Output signature format. */
-    {"help",             no_argument,       0, 0}, /* Help. */
-    {"h",                no_argument,       0, 0},
-    {"H",                no_argument,       0, 0},
-    {"test",             no_argument,       0, 0}, /* Test. */
-    {"quiet",            no_argument,       0, 0}, /* Quiet. */
-    {"q",                no_argument,       0, 0},
+    {"data",                 required_argument, 0, 0}, /* Input string. */
+    {"d",                    required_argument, 0, 0},
+    {"file",                 required_argument, 0, 0}, /* Input file. */
+    {"data-format",          required_argument, 0, 0}, /* Input string format. */
+    {"append",               required_argument, 0, 0}, /* Append string. */
+    {"a",                    required_argument, 0, 0}, 
+    {"append-format",        required_argument, 0, 0}, /* Append format. */
+    {"signature",            required_argument, 0, 0}, /* Input signature. */
+    {"s",                    required_argument, 0, 0},
+    {"signature-format",     required_argument, 0, 0}, /* Input signature format. */
+    {"format",               required_argument, 0, 0}, /* Hash format. */
+    {"f",                    required_argument, 0, 0},
+    {"secret",               required_argument, 0, 0}, /* Secret length. */
+    {"l",                    required_argument, 0, 0},
+    {"secret-min",           required_argument, 0, 0}, /* Secret min length. */
+    {"secret-max",           required_argument, 0, 0}, /* Secret max length. */
+    {"table",                no_argument,       0, 0}, /* Output as a table. */
+    {"out-data-format",      required_argument, 0, 0}, /* Output string format. */
+    {"out-signature-format", required_argument, 0, 0}, /* Output signature format. */
+    {"help",                 no_argument,       0, 0}, /* Help. */
+    {"h",                    no_argument,       0, 0},
+    {"H",                    no_argument,       0, 0},
+    {"test",                 no_argument,       0, 0}, /* Test. */
+    {"quiet",                no_argument,       0, 0}, /* Quiet. */
+    {"q",                    no_argument,       0, 0},
     {0, 0, 0, 0}
   };
 
@@ -593,7 +593,7 @@ int main(int argc, char *argv[])
         {
           options.out_table = 1;
         }
-        else if(!strcmp(option_name, "out-data"))
+        else if(!strcmp(option_name, "out-data-format"))
         {
           if(!strcasecmp(optarg, "raw"))
             options.out_data = FORMAT_RAW;
@@ -610,9 +610,9 @@ int main(int argc, char *argv[])
           else if(!strcasecmp(optarg, "none"))
             options.out_data = FORMAT_NONE;
           else
-            error(argv[0], "Unknown option passed to --out-data");
+            error(argv[0], "Unknown option passed to --out-data-format");
         }
-        else if(!strcmp(option_name, "out-signature"))
+        else if(!strcmp(option_name, "out-signature-format"))
         {
           if(!strcasecmp(optarg, "raw"))
             options.out_signature = FORMAT_RAW;
@@ -629,7 +629,7 @@ int main(int argc, char *argv[])
           else if(!strcasecmp(optarg, "none"))
             options.out_signature = FORMAT_NONE;
           else
-            error(argv[0], "Unknown option passed to --out-signature");
+            error(argv[0], "Unknown option passed to --out-signature-format");
         }
         else if(!strcmp(option_name, "help") || !strcmp(option_name, "h"))
         {
