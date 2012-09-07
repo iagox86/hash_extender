@@ -1,3 +1,5 @@
+#ifndef DISABLE_WHIRLPOOL
+
 #ifndef __HASH_EXTENDER_WHIRLPOOL_H__
 #define __HASH_EXTENDER_WHIRLPOOL_H__
 
@@ -20,4 +22,5 @@ void whirlpool_gen_signature_evil(uint64_t secret_length, uint64_t data_length, 
 /* Test code */
 void whirlpool_test();
 
+#endif
 #endif

@@ -14,7 +14,7 @@
 #include "hash_extender_sha256.h"
 #include "hash_extender_sha512.h"
 
-#ifndef NO_WHIRLPOOL
+#ifndef DISABLE_WHIRLPOOL
 #include "hash_extender_whirlpool.h"
 #endif
 
@@ -51,7 +51,7 @@ hash_type_t hash_types[] = {
   {"sha1",      SHA_DIGEST_LENGTH,       sha1_append_data,      sha1_gen_signature,      sha1_gen_signature_evil},
   {"sha256",    SHA256_DIGEST_LENGTH,    sha256_append_data,    sha256_gen_signature,    sha256_gen_signature_evil},
   {"sha512",    SHA512_DIGEST_LENGTH,    sha512_append_data,    sha512_gen_signature,    sha512_gen_signature_evil},
-#ifndef NO_WHIRLPOOL
+#ifndef DISABLE_WHIRLPOOL
   {"whirlpool", WHIRLPOOL_DIGEST_LENGTH, whirlpool_append_data, whirlpool_gen_signature, whirlpool_gen_signature_evil},
 #endif
   {0, 0, 0, 0, 0}

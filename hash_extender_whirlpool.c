@@ -1,3 +1,5 @@
+#ifndef DISABLE_WHIRLPOOL
+
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <string.h>
@@ -223,3 +225,4 @@ void whirlpool_test()
   whirlpool_test_lengths(); 
 }
 
+#endif
