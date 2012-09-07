@@ -440,7 +440,7 @@ void usage(char *program)
   printf("-f --format=<all|md4|md5|ripemd160|sha|sha1|sha256|sha512|whirlpool> [REQUIRED]\n");
   printf("      The hashtype of the signature. This can be given multiple times if you\n");
   printf("      want to try multiple signatures. 'all' will base the chosen types off\n");
-  printf("      the size of the signature and use the hash(es) that make sense.");
+  printf("      the size of the signature and use the hash(es) that make sense.\n");
   printf("-l --secret=<length>\n");
   printf("      The length of the secret, if known (if no secret length is given, a\n");
   printf("      variety of possible lengths are tried (4 - 32)\n");
