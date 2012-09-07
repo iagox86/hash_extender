@@ -1,4 +1,4 @@
-CFLAGS=-std=c89 -g -oS -Wall -Werror -D_BSD_SOURCE
+CFLAGS=-std=c89 -g -oS -Wall -Werror -D_BSD_SOURCE # -DNO_WHIRLPOOL
 LIBS=-lssl -lcrypto
 
 all: hash_extender hash_extender_test

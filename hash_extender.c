@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include "buffer.h"
+
 #include "hash_extender_md4.h"
 #include "hash_extender_md5.h"
 #include "hash_extender_ripemd160.h"
@@ -12,7 +13,10 @@
 #include "hash_extender_sha1.h"
 #include "hash_extender_sha256.h"
 #include "hash_extender_sha512.h"
+
+#ifndef NO_WHIRLPOOL
 #include "hash_extender_whirlpool.h"
+#endif
 
 /* Input and output formats. */
 typedef enum {
@@ -22,6 +26,38 @@ typedef enum {
   FORMAT_HEX  = 4,
   FORMAT_CSTR = 5
 } format_t;
+
+/* Define the types of the append, signature, and evil signature functions so
+ * we can use them as function pointers later. */
+typedef uint8_t *(append_data_t)(uint8_t *data, uint64_t data_length, uint64_t secret_length, uint8_t *append, uint64_t append_length, uint64_t *new_length);
+typedef void(gen_signature_t)(uint8_t *secret, uint64_t secret_length, uint8_t *data, uint64_t data_length, uint8_t signature[]);
+typedef void(gen_signature_evil_t)(uint64_t secret_length, uint64_t data_length, uint8_t original_signature[], uint8_t *append, uint64_t append_length, uint8_t new_signature[]);
+
+/* Define a list of structs. */
+typedef struct
+{
+  char                 *name;
+  uint64_t              hash_size;
+  append_data_t        *append_data;
+  gen_signature_t      *gen_signature;
+  gen_signature_evil_t *gen_signature_evil;
+} hash_type_t;
+
+hash_type_t hash_types[] = {
+  {"md4",       MD4_DIGEST_LENGTH,       md4_append_data,       md4_gen_signature,       md4_gen_signature_evil},
+  {"md5",       MD5_DIGEST_LENGTH,       md5_append_data,       md5_gen_signature,       md5_gen_signature_evil},
+  {"ripemd160", RIPEMD160_DIGEST_LENGTH, ripemd160_append_data, ripemd160_gen_signature, ripemd160_gen_signature_evil},
+  {"sha",       SHA_DIGEST_LENGTH,       sha_append_data,       sha_gen_signature,       sha_gen_signature_evil},
+  {"sha1",      SHA_DIGEST_LENGTH,       sha1_append_data,      sha1_gen_signature,      sha1_gen_signature_evil},
+  {"sha256",    SHA256_DIGEST_LENGTH,    sha256_append_data,    sha256_gen_signature,    sha256_gen_signature_evil},
+  {"sha512",    SHA512_DIGEST_LENGTH,    sha512_append_data,    sha512_gen_signature,    sha512_gen_signature_evil},
+#ifndef NO_WHIRLPOOL
+  {"whirlpool", WHIRLPOOL_DIGEST_LENGTH, whirlpool_append_data, whirlpool_gen_signature, whirlpool_gen_signature_evil},
+#endif
+  {0, 0, 0, 0, 0}
+};
+
+#define MAX_DIGEST_LENGTH SHA512_DIGEST_LENGTH
 
 /* Define the various options we can set. */
 typedef struct {
@@ -42,15 +78,8 @@ typedef struct {
   uint8_t  *signature;
   uint64_t  signature_length;
 
-  uint8_t   format_all;
-  uint8_t   format_md4;
-  uint8_t   format_md5;
-  uint8_t   format_ripemd160;
-  uint8_t   format_sha;
-  uint8_t   format_sha1;
-  uint8_t   format_sha256;
-  uint8_t   format_sha512;
-  uint8_t   format_whirlpool;
+  uint8_t   formats[sizeof(hash_types) / sizeof(hash_type_t)];
+  uint8_t   format_count;
 
   uint64_t  secret_min;
   uint64_t  secret_max;
@@ -62,7 +91,7 @@ typedef struct {
   uint8_t   quiet;
 } options_t;
 
-/**Convert an html-encoded string (a string containing, for example, %12%34,
+/* Convert an html-encoded string (a string containing, for example, %12%34,
  * as well as '+' instead of ' ') to a raw string. Returns the newly allocated
  * string, as well as the length. */
 uint8_t *html_to_raw(char *str, uint64_t *out_length)
@@ -342,69 +371,24 @@ void output(options_t *options, char *type, uint64_t secret_length, uint8_t *new
 
 void go(options_t *options)
 {
+  uint32_t i;
   size_t secret_length;
 
   for(secret_length = options->secret_min; secret_length < options->secret_max + 1; secret_length++)
   {
     uint8_t *new_data;
-    uint8_t new_signature[SHA512_DIGEST_LENGTH];
+    uint8_t new_signature[MAX_DIGEST_LENGTH];
     uint64_t new_length;
 
-    if(options->format_md4)
+    for(i = 0; hash_types[i].name; i++)
     {
-      new_data = md4_append_data(options->str, options->str_length, secret_length, options->append, options->append_length, &new_length);
-      md4_gen_signature_evil(secret_length, options->str_length, options->signature, options->append, options->append_length, new_signature);
-      output(options, "md4", secret_length, new_data, new_length, new_signature, MD4_DIGEST_LENGTH);
-      free(new_data);
-    }
-    if(options->format_md5)
-    {
-      new_data = md5_append_data(options->str, options->str_length, secret_length, options->append, options->append_length, &new_length);
-      md5_gen_signature_evil(secret_length, options->str_length, options->signature, options->append, options->append_length, new_signature);
-      output(options, "md5", secret_length, new_data, new_length, new_signature, MD5_DIGEST_LENGTH);
-      free(new_data);
-    }
-    if(options->format_ripemd160)
-    {
-      new_data = ripemd160_append_data(options->str, options->str_length, secret_length, options->append, options->append_length, &new_length);
-      ripemd160_gen_signature_evil(secret_length, options->str_length, options->signature, options->append, options->append_length, new_signature);
-      output(options, "ripemd160", secret_length, new_data, new_length, new_signature, RIPEMD160_DIGEST_LENGTH);
-      free(new_data);
-    }
-    if(options->format_sha)
-    {
-      new_data = sha_append_data(options->str, options->str_length, secret_length, options->append, options->append_length, &new_length);
-      sha_gen_signature_evil(secret_length, options->str_length, options->signature, options->append, options->append_length, new_signature);
-      output(options, "sha", secret_length, new_data, new_length, new_signature, SHA_DIGEST_LENGTH);
-      free(new_data);
-    }
-    if(options->format_sha1)
-    {
-      new_data = sha1_append_data(options->str, options->str_length, secret_length, options->append, options->append_length, &new_length);
-      sha1_gen_signature_evil(secret_length, options->str_length, options->signature, options->append, options->append_length, new_signature);
-      output(options, "sha1", secret_length, new_data, new_length, new_signature, SHA_DIGEST_LENGTH);
-      free(new_data);
-    }
-    if(options->format_sha256)
-    {
-      new_data = sha256_append_data(options->str, options->str_length, secret_length, options->append, options->append_length, &new_length);
-      sha256_gen_signature_evil(secret_length, options->str_length, options->signature, options->append, options->append_length, new_signature);
-      output(options, "sha256", secret_length, new_data, new_length, new_signature, SHA256_DIGEST_LENGTH);
-      free(new_data);
-    }
-    if(options->format_sha512)
-    {
-      new_data = sha512_append_data(options->str, options->str_length, secret_length, options->append, options->append_length, &new_length);
-      sha512_gen_signature_evil(secret_length, options->str_length, options->signature, options->append, options->append_length, new_signature);
-      output(options, "sha512", secret_length, new_data, new_length, new_signature, SHA512_DIGEST_LENGTH);
-      free(new_data);
-    }
-    if(options->format_whirlpool)
-    {
-      new_data = whirlpool_append_data(options->str, options->str_length, secret_length, options->append, options->append_length, &new_length);
-      whirlpool_gen_signature_evil(secret_length, options->str_length, options->signature, options->append, options->append_length, new_signature);
-      output(options, "whirlpool", secret_length, new_data, new_length, new_signature, WHIRLPOOL_DIGEST_LENGTH);
-      free(new_data);
+      if(options->formats[i])
+      {
+        new_data = hash_types[i].append_data(options->str, options->str_length, secret_length, options->append, options->append_length, &new_length);
+        hash_types[i].gen_signature_evil(secret_length, options->str_length, options->signature, options->append, options->append_length, new_signature);
+        output(options, hash_types[i].name, secret_length, new_data, new_length, new_signature, hash_types[i].hash_size);
+        free(new_data);
+      }
     }
   }
 }
@@ -438,7 +422,7 @@ void usage(char *program)
   printf("      The data to append to the string. Default: raw.\n");
   printf("--append-format=<raw|html|hex>\n");
   printf("-f --format=<all|md4|md5|ripemd160|sha|sha1|sha256|sha512|whirlpool> [REQUIRED]\n");
-  printf("      The hashtype of the signature. This can be given multiple times if you\n");
+  printf("      The hash_type of the signature. This can be given multiple times if you\n");
   printf("      want to try multiple signatures. 'all' will base the chosen types off\n");
   printf("      the size of the signature and use the hash(es) that make sense.\n");
   printf("-l --secret=<length>\n");
@@ -478,10 +462,11 @@ void error(char *program, char *message)
 
 int main(int argc, char *argv[])
 {
-  options_t   options;
-  char        c;
-  int         option_index;
-  const char *option_name;
+  options_t    options;
+  char         c;
+  int          option_index;
+  const char  *option_name;
+  uint32_t     i;
 
   struct option long_options[] =
   {
@@ -512,6 +497,8 @@ int main(int argc, char *argv[])
     {"q",                no_argument,       0, 0},
     {0, 0, 0, 0}
   };
+
+  printf("%d\n", (int)sizeof(options.formats));
 
   memset(&options, 0, sizeof(options_t));
 
@@ -574,26 +561,15 @@ int main(int argc, char *argv[])
         }
         else if(!strcmp(option_name, "format") || !strcmp(option_name, "f"))
         {
-          if(!strcasecmp(optarg, "all"))
-            options.format_all = 1;
-          else if(!strcasecmp(optarg, "md4"))
-            options.format_md4 = 1;
-          else if(!strcasecmp(optarg, "md5"))
-            options.format_md5 = 1;
-          else if(!strcasecmp(optarg, "ripemd160"))
-            options.format_ripemd160 = 1;
-          else if(!strcasecmp(optarg, "sha"))
-            options.format_sha = 1;
-          else if(!strcasecmp(optarg, "sha1"))
-            options.format_sha1 = 1;
-          else if(!strcasecmp(optarg, "sha256"))
-            options.format_sha256 = 1;
-          else if(!strcasecmp(optarg, "sha512"))
-            options.format_sha512 = 1;
-          else if(!strcasecmp(optarg, "whirlpool"))
-            options.format_whirlpool = 1;
-          else
-            error(argv[0], "Unknown type passed to --format.");
+          for(i = 0; hash_types[i].name; i++)
+          {
+            if(!strcasecmp(optarg, hash_types[i].name))
+            {
+              options.formats[i] = 1;
+              options.format_count++;
+              break;
+            }
+          }
         }
         else if(!strcmp(option_name, "secret"))
         {
@@ -708,18 +684,6 @@ int main(int argc, char *argv[])
   }
 
   /* Set some sane defaults. */
-  if(options.format_all == 0 &&
-     options.format_md4 == 0 &&
-     options.format_md5 == 0 &&
-     options.format_ripemd160 == 0 &&
-     options.format_sha == 0 &&
-     options.format_sha1 == 0 &&
-     options.format_sha256 == 0 &&
-     options.format_sha512 == 0 &&
-     options.format_whirlpool == 0)
-  {
-    options.format_all = 1;
-  }
   if(options.secret_min == 0 && options.secret_max == 0)
   {
     options.secret_min = 4;
@@ -753,63 +717,33 @@ int main(int argc, char *argv[])
   /* Convert the signature. */
   options.signature = to_raw(options.signature_raw, options.signature_format, &options.signature_length);
 
+  /* If no formats were given, try to guess it. */
+  if(options.format_count == 0)
+  {
+    /* If no signature was given, figure out which, if any, make sense. */
+    for(i = 0; hash_types[i].name; i++)
+    {
+      if(options.signature_length == hash_types[i].hash_size)
+      {
+        options.formats[i] = 1;
+        options.format_count++;
+      }
+    }
+  }
+  if(options.format_count == 0)
+  {
+    error(argv[0], "No valid hash formats were found");
+  }
+
   /* Sanity check the length of the signature. */
-  if(options.format_all)
+  for(i = 0; hash_types[i].name; i++)
   {
-    options.format_md4       = (options.signature_length == MD4_DIGEST_LENGTH);
-    options.format_md5       = (options.signature_length == MD5_DIGEST_LENGTH);
-    options.format_ripemd160 = (options.signature_length == RIPEMD160_DIGEST_LENGTH);
-    options.format_sha       = (options.signature_length == SHA_DIGEST_LENGTH);
-    options.format_sha1      = (options.signature_length == SHA_DIGEST_LENGTH);
-    options.format_sha256    = (options.signature_length == SHA256_DIGEST_LENGTH);
-    options.format_sha512    = (options.signature_length == SHA512_DIGEST_LENGTH);
-    options.format_whirlpool = (options.signature_length == WHIRLPOOL_DIGEST_LENGTH);
+    if(options.formats[i] && options.signature_length != hash_types[i].hash_size)
+    {
+      fprintf(stderr, "%s's signature needs to be %"PRId64" bytes", hash_types[i].name, hash_types[i].hash_size);
+      exit(1);
+    }
   }
-  else if(options.format_md4 && options.signature_length != MD4_DIGEST_LENGTH)
-  {
-    fprintf(stderr, "md4's signature needs to be %d bytes", MD4_DIGEST_LENGTH);
-  }
-  else if(options.format_md5 && options.signature_length != MD5_DIGEST_LENGTH)
-  {
-    fprintf(stderr, "md5's signature needs to be %d bytes", MD5_DIGEST_LENGTH);
-  }
-  else if(options.format_ripemd160 && options.signature_length != RIPEMD160_DIGEST_LENGTH)
-  {
-    fprintf(stderr, "ripemd160's signature needs to be %d bytes", RIPEMD160_DIGEST_LENGTH);
-  }
-  else if(options.format_sha && options.signature_length != SHA_DIGEST_LENGTH)
-  {
-    fprintf(stderr, "sha's signature needs to be %d bytes", SHA_DIGEST_LENGTH);
-  }
-  else if(options.format_sha1 && options.signature_length != SHA_DIGEST_LENGTH)
-  {
-    fprintf(stderr, "sha1's signature needs to be %d bytes", SHA_DIGEST_LENGTH);
-  }
-  else if(options.format_sha256 && options.signature_length != SHA256_DIGEST_LENGTH)
-  {
-    fprintf(stderr, "sha256's signature needs to be %d bytes", SHA256_DIGEST_LENGTH);
-  }
-  else if(options.format_sha512 && options.signature_length != SHA512_DIGEST_LENGTH)
-  {
-    fprintf(stderr, "sha512's signature needs to be %d bytes", SHA512_DIGEST_LENGTH);
-  }
-  else if(options.format_whirlpool && options.signature_length != WHIRLPOOL_DIGEST_LENGTH)
-  {
-    fprintf(stderr, "whirlpool's signature needs to be %d bytes", WHIRLPOOL_DIGEST_LENGTH);
-  }
-
-  if(options.format_md4 == 0 &&
-      options.format_md5 == 0 &&
-      options.format_ripemd160 == 0 &&
-      options.format_sha == 0 &&
-      options.format_sha1 == 0 &&
-      options.format_sha256 == 0 &&
-      options.format_sha512 == 0 &&
-      options.format_whirlpool == 0)
-  {
-    error(argv[0], "No valid hash types could be found based on the --format arg(s) and the size.");
-  }
-
 
   go(&options);
 
