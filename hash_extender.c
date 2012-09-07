@@ -21,10 +21,12 @@
 /* Input and output formats. */
 typedef enum {
   FORMAT_NONE = 1,
-  FORMAT_RAW  = 2,
-  FORMAT_HTML = 3,
-  FORMAT_HEX  = 4,
-  FORMAT_CSTR = 5
+  FORMAT_RAW,
+  FORMAT_HTML,
+  FORMAT_HTML_PURE,
+  FORMAT_HEX,
+  FORMAT_CSTR,
+  FORMAT_CSTR_PURE,
 } format_t;
 
 /* Define the types of the append, signature, and evil signature functions so
@@ -292,11 +294,11 @@ void output_format(format_t format, uint8_t *data, uint64_t data_length)
     for(i = 0; i < data_length; i++)
       printf("%c", data[i]);
   }
-  else if(format == FORMAT_HTML)
+  else if(format == FORMAT_HTML || format == FORMAT_HTML_PURE)
   {
     for(i = 0; i < data_length; i++)
     {
-      if(isalpha(data[i]) || isdigit(data[i]))
+      if((isalpha(data[i]) || isdigit(data[i])) && format != FORMAT_HTML_PURE)
       {
         printf("%c", data[i]);
       }
@@ -315,17 +317,13 @@ void output_format(format_t format, uint8_t *data, uint64_t data_length)
     for(i = 0; i < data_length; i++)
       printf("%02x", data[i]);
   }
-  else if(format ==  FORMAT_CSTR)
+  else if(format ==  FORMAT_CSTR || format == FORMAT_CSTR_PURE)
   {
     for(i = 0; i < data_length; i++)
     {
-      if(isalpha(data[i]) || isdigit(data[i]))
+      if((isalpha(data[i]) || isdigit(data[i])) && format != FORMAT_CSTR_PURE)
       {
         printf("%c", data[i]);
-      }
-      else if(data[i] == ' ')
-      {
-        printf(" ");
       }
       else
       {
@@ -426,8 +424,7 @@ void usage(char *program)
   printf("      want to try multiple signatures. 'all' will base the chosen types off\n");
   printf("      the size of the signature and use the hash(es) that make sense.\n");
   printf("-l --secret=<length>\n");
-  printf("      The length of the secret, if known (if no secret length is given, a\n");
-  printf("      variety of possible lengths are tried (4 - 32)\n");
+  printf("      The length of the secret, if known. Default: 8.\n");
   printf("--secret-min=<min>\n");
   printf("--secret-max=<max>\n");
   printf("      Try different secret lengths (both options are required)\n");
@@ -497,8 +494,6 @@ int main(int argc, char *argv[])
     {"q",                no_argument,       0, 0},
     {0, 0, 0, 0}
   };
-
-  printf("%d\n", (int)sizeof(options.formats));
 
   memset(&options, 0, sizeof(options_t));
 
@@ -600,10 +595,14 @@ int main(int argc, char *argv[])
             options.out_data = FORMAT_RAW;
           else if(!strcasecmp(optarg, "html"))
             options.out_data = FORMAT_HTML;
+          else if(!strcasecmp(optarg, "html-pure"))
+            options.out_data = FORMAT_HTML_PURE;
           else if(!strcasecmp(optarg, "hex"))
             options.out_data = FORMAT_HEX;
           else if(!strcasecmp(optarg, "cstr"))
             options.out_data = FORMAT_CSTR;
+          else if(!strcasecmp(optarg, "cstr-pure"))
+            options.out_data = FORMAT_CSTR_PURE;
           else if(!strcasecmp(optarg, "none"))
             options.out_data = FORMAT_NONE;
           else
@@ -615,10 +614,14 @@ int main(int argc, char *argv[])
             options.out_signature = FORMAT_RAW;
           else if(!strcasecmp(optarg, "html"))
             options.out_signature = FORMAT_HTML;
+          else if(!strcasecmp(optarg, "html-pure"))
+            options.out_signature = FORMAT_HTML_PURE;
           else if(!strcasecmp(optarg, "hex"))
             options.out_signature = FORMAT_HEX;
           else if(!strcasecmp(optarg, "cstr"))
             options.out_signature = FORMAT_CSTR;
+          else if(!strcasecmp(optarg, "cstr-pure"))
+            options.out_signature = FORMAT_CSTR_PURE;
           else if(!strcasecmp(optarg, "none"))
             options.out_signature = FORMAT_NONE;
           else
@@ -686,8 +689,8 @@ int main(int argc, char *argv[])
   /* Set some sane defaults. */
   if(options.secret_min == 0 && options.secret_max == 0)
   {
-    options.secret_min = 4;
-    options.secret_max = 32;
+    options.secret_min = 8;
+    options.secret_max = 8;
   }
   else if(options.secret_min == 0 || options.secret_max == 0)
   {
