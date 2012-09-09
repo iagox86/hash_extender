@@ -5,7 +5,7 @@ INCLUDE_WHIRLPOOL=whrlpool.h
 
 # Checks if /usr/include/openssl/whrlpool.h exists, and set a define if it
 # doesn't.
-ifneq ($(shell ls $(INCLUDE_OPENSSL)/$(INCLUDE_WHIRLPOOL)), $(INCLUDE_OPENSSL)/$(INCLUDE_WHIRLPOOL))
+ifneq ($(shell ls $(INCLUDE_OPENSSL)/$(INCLUDE_WHIRLPOOL) 2>/dev/null), $(INCLUDE_OPENSSL)/$(INCLUDE_WHIRLPOOL))
 	WHIRLPOOL=-DDISABLE_WHIRLPOOL
 endif
 
