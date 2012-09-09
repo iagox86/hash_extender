@@ -1,5 +1,16 @@
-CFLAGS=-std=c89 -g -oS -Wall -Werror -D_BSD_SOURCE #-DDISABLE_WHIRLPOOL
-LIBS=-lssl -lcrypto
+# These includes are simply to decide whether or not to compile whirlpool
+# support.
+INCLUDE_OPENSSL=/usr/include/openssl
+INCLUDE_WHIRLPOOL=whrlpool.h
+
+# Checks if /usr/include/openssl/whrlpool.h exists, and set a define if it
+# doesn't.
+ifneq ($(shell ls $(INCLUDE_OPENSSL)/$(INCLUDE_WHIRLPOOL)), $(INCLUDE_OPENSSL)/$(INCLUDE_WHIRLPOOL))
+	WHIRLPOOL=-DDISABLE_WHIRLPOOL
+endif
+
+CFLAGS:=-std=c89 -g -oS -Wall -Werror -D_BSD_SOURCE $(WHIRLPOOL)
+LIBS:=-lssl -lcrypto
 
 all: hash_extender hash_extender_test
 
