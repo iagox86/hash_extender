@@ -88,6 +88,7 @@ typedef struct {
   uint8_t   quiet;
 } options_t;
 
+/* Output the data in the chosen format. */
 void output(options_t *options, char *type, uint64_t secret_length, uint8_t *new_data, uint64_t new_data_length, uint8_t *new_signature, uint64_t new_signature_length)
 {
   if(options->quiet)
@@ -126,19 +127,29 @@ void go(options_t *options)
   uint32_t i;
   size_t secret_length;
 
+  /* Loop through the possible lengths of 'secret'. */
   for(secret_length = options->secret_min; secret_length <= options->secret_max; secret_length++)
   {
     uint8_t *new_data;
     uint8_t new_signature[MAX_DIGEST_LENGTH];
     uint64_t new_length;
 
+    /* Loop through the possible hashtypes. */
     for(i = 0; hash_types[i].name; i++)
     {
+      /* If the hashtype is enabled, ... */
       if(options->formats[i])
       {
+        /* Generate the new data. */
         new_data = hash_types[i].append_data(options->data, options->data_length, secret_length, options->append, options->append_length, &new_length);
+
+        /* Generate the signature for it.  */
         hash_types[i].gen_signature_evil(secret_length, options->data_length, options->signature, options->append, options->append_length, new_signature);
+
+        /* Display the result to the user. */
         output(options, hash_types[i].name, secret_length, new_data, new_length, new_signature, hash_types[i].hash_size);
+
+        /* Free the buffer. */
         free(new_data);
       }
     }
@@ -462,28 +473,23 @@ int main(int argc, char *argv[])
     error(argv[0], "--secret-min and --secret-max can't be used separately, please specify both.");
   }
 
-  if(options.data_format == 0)
-    options.data_format = FORMAT_RAW;
-  if(options.append_format == 0)
-    options.append_format = FORMAT_RAW;
-  if(options.signature_format == 0)
-    options.signature_format = FORMAT_HEX;
-  if(options.out_data == 0)
-    options.out_data = FORMAT_HEX;
-  if(options.out_signature == 0)
-    options.out_signature = FORMAT_HEX;
+  if(options.data_format == 0)      options.data_format      = FORMAT_RAW;
+  if(options.append_format == 0)    options.append_format    = FORMAT_RAW;
+  if(options.signature_format == 0) options.signature_format = FORMAT_HEX;
+  if(options.out_data == 0)         options.out_data         = FORMAT_HEX;
+  if(options.out_signature == 0)    options.out_signature    = FORMAT_HEX;
 
   /* Convert the data appropriately. */
   if(options.data_raw)
-    options.data = to_raw(options.data_raw, options.data_format, &options.data_length);
+    options.data = format_to_raw(options.data_raw, options.data_format, &options.data_length);
   else
     options.data = read_file(options.filename, &options.data_length);
 
   /* Convert the appended data. */
-  options.append = to_raw(options.append_raw, options.append_format, &options.append_length);
+  options.append = format_to_raw(options.append_raw, options.append_format, &options.append_length);
 
   /* Convert the signature. */
-  options.signature = to_raw(options.signature_raw, options.signature_format, &options.signature_length);
+  options.signature = format_to_raw(options.signature_raw, options.signature_format, &options.signature_length);
 
   /* If no formats were given, try to guess it. */
   if(options.format_count == 0)
@@ -514,6 +520,10 @@ int main(int argc, char *argv[])
   }
 
   go(&options);
+
+  free(options.data);
+  free(options.append);
+  free(options.signature);
 
   return 0;
 }

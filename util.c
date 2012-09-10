@@ -67,7 +67,7 @@ void DIE_MEM()
 /* Convert an html-encoded string (a string containing, for example, %12%34,
  * as well as '+' instead of ' ') to a raw string. Returns the newly allocated
  * string, as well as the length. */
-uint8_t *html_to_raw(char *str, uint64_t *out_length)
+static uint8_t *html_to_raw(char *str, uint64_t *out_length)
 {
   buffer_t *b = buffer_create(BO_HOST);
   uint64_t i = 0;
@@ -98,9 +98,9 @@ uint8_t *html_to_raw(char *str, uint64_t *out_length)
   return buffer_get(b, out_length);
 }
 
-/**Convert a string in hex format (eg, "ab123d43...") into a raw string.
+/* Convert a string in hex format (eg, "ab123d43...") into a raw string.
  * Returns the newly allocated string, as well as the length. */
-uint8_t *hex_to_raw(char *str, uint64_t *out_length)
+static uint8_t *hex_to_raw(char *str, uint64_t *out_length)
 {
   buffer_t *b = buffer_create(BO_HOST);
   uint64_t i = 0;
@@ -120,7 +120,7 @@ uint8_t *hex_to_raw(char *str, uint64_t *out_length)
 /**Convert a string in a C-like format (that is, containing literal escapes
  * like '\n', '\r', '\x25', etc) into a raw string. Return the newly allocated
  * string as well as the length. */
-uint8_t *cstr_to_raw(char *str, uint64_t *out_length)
+static uint8_t *cstr_to_raw(char *str, uint64_t *out_length)
 {
   buffer_t *b = buffer_create(BO_HOST);
   uint64_t i = 0;
@@ -200,37 +200,36 @@ uint8_t *cstr_to_raw(char *str, uint64_t *out_length)
   return buffer_get(b, out_length);
 }
 
-uint8_t *to_raw(char *str, format_t format, uint64_t *out_length)
+uint8_t *format_to_raw(char *str, format_t format, uint64_t *out_length)
 {
-  if(format == FORMAT_NONE)
-  {
-    *out_length = 0;
-    return malloc(0);
-  }
-  else if(format == FORMAT_RAW)
-  {
-    uint8_t *out = malloc(strlen(str) + 1);
-    memcpy(out, str, strlen(str) + 1);
-    *out_length = strlen(str);
+  uint8_t *out;
 
-    return out;
-  }
-  else if(format == FORMAT_HTML)
+  switch(format)
   {
-    return html_to_raw(str, out_length);
-  }
-  else if(format == FORMAT_HEX)
-  {
-    return hex_to_raw(str, out_length);
-  }
-  else if(format == FORMAT_CSTR)
-  {
-    return cstr_to_raw(str, out_length);
-  }
-  else
-  {
-    fprintf(stderr, "Unknown format: %d\n", format);
-    exit(1);
+    case FORMAT_NONE:
+      *out_length = 0;
+      return malloc(0);
+
+    case FORMAT_RAW:
+      out = malloc(strlen(str) + 1);
+      memcpy(out, str, strlen(str) + 1);
+      *out_length = strlen(str);
+      return out;
+
+    case FORMAT_HTML:
+    case FORMAT_HTML_PURE:
+      return html_to_raw(str, out_length);
+
+    case FORMAT_HEX:
+      return hex_to_raw(str, out_length);
+
+    case FORMAT_CSTR:
+    case  FORMAT_CSTR_PURE:
+      return cstr_to_raw(str, out_length);
+
+    default:
+      fprintf(stderr, "Unknown format: %d\n", format);
+      exit(1);
   }
 
   return NULL;
@@ -242,9 +241,11 @@ void output_format(format_t format, uint8_t *data, uint64_t data_length)
 
   if(format == FORMAT_NONE)
   {
+    /* Don't output at all. */
   }
   else if(format == FORMAT_RAW)
   {
+    /* Output the bytes directly. */
     for(i = 0; i < data_length; i++)
       printf("%c", data[i]);
   }
