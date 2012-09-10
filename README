@@ -4,16 +4,31 @@ By Ron Bowes <ron@skullsecurity.net>
 +-------+
 | INTRO |
 +-------+
-This tool implements a hash length extension attack against a bunch of different
-hash algorithms:
-- md4
-- md5
-- ripemd160
-- sha
-- sha1
-- sha256
-- sha512
-- whirlpool
+Awhile back, me and my friend @mak_kolybabi were doing a capture-the-flag contest at
+https://stripe-ctf.com. One of the levels of the contest required us to perform
+a hash length extension attack. I had never even heard of the attack at the
+time, and after some reading I realized that not only is it a super cool (and
+easy!) attack to perform, there is also a total lack of good tools for
+performing said attack! After hours of adding the wrong number of null bytes
+or incorrectly adding length values, I vowed to write a tool to make this easy for
+myself and anybody else who's trying to do it. So, after a couple weeks of work, here
+it is!
+
+Now I'm gonna release the tool, and hope I didn't totally miss a good tool that does
+the same thing :)
+
+hash_extender implements a length extension attack against every algorithm I could
+think of:
+<ul>
+  <li>md4</li>
+  <li>md5</li>
+  <li>ripemd160</li>
+  <li>sha</li>
+  <li>sha1</li>
+  <li>sha256</li>
+  <li>sha512</li>
+  <li>whirlpool</li>
+</li>
 
 I'm more than happy to extend this to cover other hashtypes as well, provided
 they are "vulnerable" to this attack. Please contact me if you have other
@@ -22,45 +37,66 @@ candidates and I'll add them ASAP!
 +------------+
 | THE ATTACK |
 +------------+
-An application may be susceptible to a hash length extension attack if it
-prepends a secret value to a string, hashes it, and entrusts the user with the
-string and the hash, but not the secret. Assuming the algorithm is vulnerable
-to this attack, the attacker can simply pick up where the hash left off -
-that is, build a new hash context and set its state to the hash - and continue
-hashing data.
+An application is susceptible to a hash length extension attack if it
+prepends a secret value to a string, hashes it with a vulnerable algorithm, and
+entrusts the user with the string and the hash, but not the secret. The attacker
+can append any amount of data to the string without knowing the secret, and still
+generate a valid hash! This is done by simply picking up where the hashing algorithm
+left off; it turns out, 100% of the context needed to continue a hash is in the
+output of most hashing algorithms! We simply load that context into the appropriate
+hash structure and continue hashing.
 
-In other words, given data with an unknown prefix and a hash, an attacker can
-append to the data and generate a valid signature.
+TL;DR: given data with an unknown prefix and a hash, an attacker can
+append to the data and still generate a valid signature.
 
-To show this step by step, let's say we have a secret of 'secret', data of
-'data', and we want to append the string 'append'. Let's use md5 for this
-eample. First, let's take a look at the original signature:
-md5('secret' + 'data') = 6036708eba0d11f6ef52ad44e8b74d5b
++---------+
+| EXAMPLE |
++---------+
+Let's look at a step-by-step example. For this example:
+<ul>
+  <li>let secret = "secret"</li>
+  <li>let data   = "data"</li>
+  <li>let H = md5</li>
+  <li>let signature = hash(secret + data) = "6036708eba0d11f6ef52ad44e8b74d5b"</li>
+  <li>let append = "append"</li>
+</ul>
 
-The attacker knows the data and the hash, but doesn't know that the secret is
-'secret'. The attacker wishes to add the text 'append' to the end of 'data',
-and to generate a valid hash that will pass muster. So, there are two things
-that he needs to calculate separately - the new data (with 'append' appended)
-and the new signature.
+The server sends <em>data</em> and <em>signature</em> to the attacker. The
+attacker guesses that <em>H</em> is md5 simply by length (it's the most common
+128-bit hashing algorithm), based on the source, or the specs, or any way
+they are able to.
 
-When 'secret'+'data' is hashed, it's first padded to a full block size. On md5
-blocks are 64 bytes long. The padding is a '1' bit, followed by enough '0' bits
-that the length is congruent to 56 bytes (mod 64). In other words, it's padded
-by '0' bits until (length % 64) = 56. Then the length of the original string
-(0x0a) in bits (0x50) as an 8-byte value (56 00 00 00 00 00 00 00) is appended
-to the string, making it an even multiple of 64. Once padded, the final block
-is hashed and the result is returned.
+Knowing only <em>data</em>, <em>H</em>, and <em>signature</em>, the attacker's
+goal is to append <em>append</em> to <em>data<em> and generate a valid signature
+for the new data. And that's easy to do! Let's see how.
 
-It's worth stopping here to note: some algorithms have a block size that isn't
-64 bytes (sha512 has a 128-byte blocksize), some algorithms have a different 
-appended length (sha512 has a 16-byte length appended, and whirlpool has a 32-
-byte length appended), and some hash algorithms use big endian to store the
-length (sha, sha1, sha256, sha512, and whirlpool use big endian, whereas md4,
-md5, and ripemd160 use little endian).
+  +---------+
+  | PADDING |
+  +---------+
+Before we look at the actual attack, we have to talk a little about padding.
 
-Now that we know how it's padded, we can generate the exact string that was
-put through md5, after padding:
-secretdata%80%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%50%00%00%00%00%00%00%00
+When calculating <em>H</em>(<em>secret</em> + <em>data</em>), the string being
+hashed is first padded with a '1' bit and a number of '0' bits. That is, in hex,
+the 0x80 byte followed by some number of 0x00 bytes. The number of 0x00 bytes
+depends on the particular algorithm and blocksize. With md4, md5, sha1, sha256,
+and several other algorithms pad the string until it's congruent to 56 bytes
+(mod 64). In other words, it's padded until (<em>length</em> mod 64) = 56. Or,
+to put it one more way, it's padded until it's 8 bytes less than a full (64-byte)
+block. sha512 and Whirlpool use a 128-bit blocksize and different modulus
+values.
+
+The final 8 bytes of the last block are set to the length, in bits, of the
+original string. In md4, md5, and ripemd160, these are in little endian byte
+order; in the sha family and whirlpool, they're big endian. Trust me, that
+distinction cost me days of work!
+
+In our example, <em>secret</em> + <em>data</em> = "secretdata" = 10 (0x0a) bytes,
+or 80 (0x50) bits. That means we need 46 bytes of padding (80 00 00 00 00 ...)
+followed by our 8-byte little endian length (50 00 00 00 00 00 00 00), giving us
+a padded string of:
+<pre>secretdata%80%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%50%00%00%00%00%00%00%00</pre>
+
+TODO: make this pretty
 
 That's the exact data that was hashed, which means we know the md5 of that exact
 string. Let's break it up into what each part means:
