@@ -131,7 +131,7 @@ buffer_t *buffer_create_with_data(BYTE_ORDER_t byte_order, const void *data, con
 {
 	buffer_t *new_buffer = buffer_create(byte_order);
 	if(!new_buffer)
-		DIE_MEM();
+		die_MEM();
 
 	buffer_add_bytes(new_buffer, data, length);
 
@@ -142,7 +142,7 @@ buffer_t *buffer_create_with_data(BYTE_ORDER_t byte_order, const void *data, con
 void buffer_destroy(buffer_t *buffer)
 {
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 	buffer->valid = 0;
 
 	memset(buffer->data, 0, buffer->max_length);
@@ -213,7 +213,7 @@ uint8_t *buffer_create_string(buffer_t *buffer, uint64_t *length)
 	uint8_t *ret;
 
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 
 	ret = malloc(buffer_get_length(buffer));
 	memcpy(ret, buffer->data, buffer_get_length(buffer));
@@ -237,7 +237,7 @@ uint8_t *buffer_create_string_and_destroy(buffer_t *buffer, uint64_t *length)
 buffer_t *buffer_add_int8(buffer_t *buffer, const uint8_t data)
 {
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 
 	buffer_add_bytes(buffer, &data, 1);
 
@@ -249,7 +249,7 @@ buffer_t *buffer_add_int16(buffer_t *buffer, const uint16_t data)
 	uint16_t converted;
 
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 
 	switch(buffer->byte_order)
 	{
@@ -269,7 +269,7 @@ buffer_t *buffer_add_int32(buffer_t *buffer, const uint64_t data)
 	uint64_t converted;
 
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 
 	switch(buffer->byte_order)
 	{
@@ -287,7 +287,7 @@ buffer_t *buffer_add_int32(buffer_t *buffer, const uint64_t data)
 buffer_t *buffer_add_ntstring(buffer_t *buffer, const char *data)
 {
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 
 	buffer_add_bytes(buffer, data, strlen(data) + 1);
 
@@ -297,7 +297,7 @@ buffer_t *buffer_add_ntstring(buffer_t *buffer, const char *data)
 buffer_t *buffer_add_string(buffer_t *buffer, const char *data)
 {
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 
 	buffer_add_bytes(buffer, data, strlen(data));
 
@@ -308,7 +308,7 @@ buffer_t *buffer_add_unicode(buffer_t *buffer, const char *data)
 {
 	size_t i;
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 
 	for(i = 0; i < (strlen(data) + 1); i++)
 		buffer_add_int16(buffer, data[i]);
@@ -319,13 +319,13 @@ buffer_t *buffer_add_unicode(buffer_t *buffer, const char *data)
 buffer_t *buffer_add_bytes(buffer_t *buffer, const void *data, const uint64_t length)
 {
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 
 	if(buffer->current_length + length < buffer->current_length)
-		DIE("Overflow.");
+		die("Overflow.");
 
 	if(length >= 0x80000000)
-		DIE("Too big!");
+		die("Too big!");
 
 	/* Resize the buffer, if necessary. */
 	if(buffer->current_length + length > buffer->max_length)
@@ -334,7 +334,7 @@ buffer_t *buffer_add_bytes(buffer_t *buffer, const void *data, const uint64_t le
 		{
 			/* Check for overflow. */
 			if(buffer->max_length << 1 < buffer->max_length)
-				DIE("Overflow.");
+				die("Overflow.");
 
 			/* Double the length. */
 			buffer->max_length = buffer->max_length << 1;
@@ -354,9 +354,9 @@ buffer_t *buffer_add_bytes(buffer_t *buffer, const void *data, const uint64_t le
 buffer_t *buffer_add_buffer(buffer_t *buffer, const buffer_t *source)
 {
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 	if(!source->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 
 	buffer_add_bytes(buffer, source->data, source->current_length);
 
@@ -373,7 +373,7 @@ buffer_t *buffer_add_int16_at(buffer_t *buffer,     const uint16_t data, uint64_
 	uint16_t converted;
 
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 
 	switch(buffer->byte_order)
 	{
@@ -391,7 +391,7 @@ buffer_t *buffer_add_int32_at(buffer_t *buffer,     const uint64_t data, uint64_
 	uint64_t converted;
 
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 
 	switch(buffer->byte_order)
 	{
@@ -418,7 +418,7 @@ buffer_t *buffer_add_unicode_at(buffer_t *buffer,   const char *data, uint64_t o
 {
 	size_t i;
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 
 	for(i = 0; i < (strlen(data) + 1); i++)
 		buffer_add_int16_at(buffer, data[i], offset + (i * 2));
@@ -430,11 +430,11 @@ buffer_t *buffer_add_bytes_at(buffer_t *buffer,     const void *data, const uint
 {
 	/* Ensure the buffer is valid. */
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 
 	/* Funnily enough, this works the same for reading as for writing. */
 	if(!buffer_can_read_bytes_at(buffer, offset, length))
-		DIE("Program read off the end of the buffer.");
+		die("Program read off the end of the buffer.");
 
 	memcpy(buffer->data + offset, data, length);
 
@@ -444,7 +444,7 @@ buffer_t *buffer_add_bytes_at(buffer_t *buffer,     const void *data, const uint
 buffer_t *buffer_add_buffer_at(buffer_t *buffer,    const buffer_t *source, uint64_t offset)
 {
 	if(!source->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 
 	buffer_add_bytes_at(buffer, source->data, source->current_length, offset);
 
@@ -531,7 +531,7 @@ uint8_t buffer_read_int8_at(buffer_t *buffer, uint64_t offset)
 	uint8_t ret;
 
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 
 	buffer_read_bytes_at(buffer, offset, &ret, 1);
 
@@ -543,7 +543,7 @@ uint16_t buffer_read_int16_at(buffer_t *buffer, uint64_t offset)
 	uint16_t ret;
 
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 
 	buffer_read_bytes_at(buffer, offset, &ret, 2);
 
@@ -563,7 +563,7 @@ uint64_t buffer_read_int32_at(buffer_t *buffer, uint64_t offset)
 	uint64_t ret;
 
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 
 	buffer_read_bytes_at(buffer, offset, &ret, 4);
 
@@ -584,9 +584,9 @@ char *buffer_read_ntstring_at(buffer_t *buffer, uint64_t offset, char *data_ret,
 	uint8_t ch;
 
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 	if(!buffer_can_read_ntstring_at(buffer, offset, max_length))
-		DIE("Program read off the end of the buffer.");
+		die("Program read off the end of the buffer.");
 
 	do
 	{
@@ -607,9 +607,9 @@ char *buffer_read_unicode_at(buffer_t *buffer, uint64_t offset, char *data_ret, 
 	uint8_t  ch;
 
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 	if(!buffer_can_read_ntstring_at(buffer, offset, max_length))
-		DIE("Program read off the end of the buffer.");
+		die("Program read off the end of the buffer.");
 
 	do
 	{
@@ -629,11 +629,11 @@ char *buffer_read_unicode_data_at(buffer_t *buffer, uint64_t offset, char *data_
 	uint64_t i = 0;
 
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 	if(length * 2 < length)
-		DIE("Overflow.");
+		die("Overflow.");
 	if(!buffer_can_read_bytes_at(buffer, offset, length * 2))
-		DIE("Program read off the end of the buffer.");
+		die("Program read off the end of the buffer.");
 
 	for(i = 0; i < length; i++)
 	{
@@ -646,9 +646,9 @@ char *buffer_read_unicode_data_at(buffer_t *buffer, uint64_t offset, char *data_
 void *buffer_read_bytes_at(buffer_t *buffer, uint64_t offset, void *data, uint64_t length)
 {
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 	if(!buffer_can_read_bytes_at(buffer, offset, length))
-		DIE("Program read off the end of the buffer.");
+		die("Program read off the end of the buffer.");
 
 	memcpy(data, buffer->data + offset, length);
 
@@ -674,7 +674,7 @@ uint8_t buffer_can_read_ntstring(buffer_t *buffer)
 {
 	uint64_t i;
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 
 	for(i = buffer->position; i < buffer->current_length; i++)
 		if(buffer->data[i] == '\0')
@@ -688,7 +688,7 @@ uint8_t buffer_can_read_unicode(buffer_t *buffer)
 {
 	uint64_t i;
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 
 	for(i = buffer->position; i < buffer->current_length; i++)
 		if(((uint8_t)buffer_read_int16_at(buffer, i)) == 0)
@@ -699,9 +699,9 @@ uint8_t buffer_can_read_unicode(buffer_t *buffer)
 uint8_t buffer_can_read_bytes(buffer_t *buffer, uint64_t length)
 {
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 	if(buffer->position + length < buffer->position)
-		DIE("Overflow.");
+		die("Overflow.");
 
 	return buffer_can_read_bytes_at(buffer, buffer->position, length);
 }
@@ -759,9 +759,9 @@ uint8_t buffer_can_read_unicode_at(buffer_t *buffer, uint64_t offset, uint64_t m
 uint8_t buffer_can_read_bytes_at(buffer_t *buffer, uint64_t offset, uint64_t length)
 {
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 	if(offset + length < offset)
-		DIE("Overflow");
+		die("Overflow");
 
 /*	printf("Offset = %d\n", offset);
 	printf("Length = %d\n", length);
@@ -784,7 +784,7 @@ void buffer_print(buffer_t *buffer)
 	uint64_t length = buffer->current_length;
 	uint64_t i, j;
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 	printf("Position = %"PRId64"\n", buffer->position);
 
 	printf("Buffer contents:");
@@ -826,7 +826,7 @@ void buffer_print(buffer_t *buffer)
 uint8_t *buffer_get(buffer_t *buffer, uint64_t *length)
 {
 	if(!buffer->valid)
-		DIE("Program attempted to use deleted buffer.");
+		die("Program attempted to use deleted buffer.");
 	*length = buffer->current_length;
 	return buffer->data;
 }

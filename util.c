@@ -53,15 +53,15 @@ void print_hex_fancy(uint8_t *data, uint64_t length)
   printf("\nLength: 0x%X (%d)\n", (int)length, (int)length);
 }
 
-void DIE(char *msg)
+void die(char *msg)
 {
   fprintf(stderr, "FATAL ERROR: %s\n", msg);
   exit(1);
 }
 
-void DIE_MEM()
+void die_MEM()
 {
-  DIE("Out of memory");
+  die("Out of memory");
 }
 
 static uint8_t hex_to_int(char *hex)
@@ -199,11 +199,6 @@ static uint8_t *cstr_to_raw(char *str, uint64_t *out_length)
         buffer_add_int8(b, '\\');
       }
     }
-    else if(str[i] == '+')
-    {
-      buffer_add_int8(b, ' ');
-      i++;
-    }
     else
     {
       buffer_add_int8(b, str[i]);
@@ -265,6 +260,8 @@ void output_format(format_t format, uint8_t *data, uint64_t data_length)
   }
   else if(format == FORMAT_HTML || format == FORMAT_HTML_PURE)
   {
+    /* FORMAT_HTML outputs standard ascii characters as normal, but encodes
+     * non-ascii as %NN. FORMAT_HTML_PURE outputs everything in %NN format. */
     for(i = 0; i < data_length; i++)
     {
       if((isalpha(data[i]) || isdigit(data[i])) && format != FORMAT_HTML_PURE)
@@ -288,6 +285,8 @@ void output_format(format_t format, uint8_t *data, uint64_t data_length)
   }
   else if(format ==  FORMAT_CSTR || format == FORMAT_CSTR_PURE)
   {
+    /* FORMAT_CSTR outputs standard ascii characters as normal, but encodes
+     * non-ascii as \xNN. FORMAT_CSTR_PURE outputs everything in \xNN format. */
     for(i = 0; i < data_length; i++)
     {
       if((isalpha(data[i]) || isdigit(data[i])) && format != FORMAT_CSTR_PURE)
@@ -311,7 +310,7 @@ uint8_t *read_file(char *filename, uint64_t *out_length)
   FILE *f = fopen(filename, "rb");
 
   if(!f)
-    DIE("Couldn't open input file");
+    die("Couldn't open input file");
 
   while((bytes_read = fread(buffer, 1, 1024, f)) != 0)
   {
