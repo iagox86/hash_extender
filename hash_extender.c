@@ -159,54 +159,55 @@ uint8_t *cstr_to_raw(char *str, uint64_t *out_length)
   buffer_t *b = buffer_create(BO_HOST);
   uint64_t i = 0;
   uint8_t c;
+  uint64_t in_length = strlen(str);
 
-  while(i < strlen(str))
+  while(i < in_length)
   {
     /* The typecasts to 'int' here are to fix warnings from cygwin. */
     if(str[i] == '\\')
     {
       i++;
-      if(i < strlen(str) && str[i] == 'a')
+      if(i < in_length && str[i] == 'a')
       {
         buffer_add_int8(b, 0x07);
         i++;
       }
-      else if(i < strlen(str) && str[i] == 'b')
+      else if(i < in_length && str[i] == 'b')
       {
         buffer_add_int8(b, 0x08);
         i++;
       }
-      else if(i < strlen(str) && str[i] == 't')
+      else if(i < in_length && str[i] == 't')
       {
         buffer_add_int8(b, 0x09);
         i++;
       }
-      else if(i < strlen(str) && str[i] == 'n')
+      else if(i < in_length && str[i] == 'n')
       {
         buffer_add_int8(b, 0x0a);
         i++;
       }
-      else if(i < strlen(str) && str[i] == 'v')
+      else if(i < in_length && str[i] == 'v')
       {
         buffer_add_int8(b, 0x0b);
         i++;
       }
-      else if(i < strlen(str) && str[i] == 'f')
+      else if(i < in_length && str[i] == 'f')
       {
         buffer_add_int8(b, 0x0c);
         i++;
       }
-      else if(i < strlen(str) && str[i] == 'r')
+      else if(i < in_length && str[i] == 'r')
       {
         buffer_add_int8(b, 0x0d);
         i++;
       }
-      else if(i < strlen(str) && str[i] == 'e')
+      else if(i < in_length && str[i] == 'e')
       {
         buffer_add_int8(b, 0x1b);
         i++;
       }
-      else if(i + 2 < strlen(str) && str[i] == 'x' && isxdigit((int)str[i + 1]) && isxdigit((int)str[i + 2]))
+      else if(i + 2 < in_length && str[i] == 'x' && isxdigit((int)str[i + 1]) && isxdigit((int)str[i + 2]))
       {
         c =  (isdigit((int)str[i + 1]) ? (str[i + 1] - '0') : (tolower((int)str[i + 1]) - 'a' + 10)) << 4;
         c |= (isdigit((int)str[i + 2]) ? (str[i + 2] - '0') : (tolower((int)str[i + 2]) - 'a' + 10)) << 0;
