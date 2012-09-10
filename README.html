@@ -2,7 +2,7 @@ Hash Extender
 By Ron Bowes <ron@skullsecurity.net>
 
 This will be a blog post on http://www.skullsecurity.org/. For now, it's a
-REAME file.
+README file.
 
 <h1>Intro</h1>
 
@@ -10,17 +10,15 @@ Awhile back, me and my friend @mak_kolybabi were doing a capture-the-flag
 contest at https://stripe-ctf.com. One of the levels of the contest required us
 to perform a hash length extension attack. I had never even heard of the attack
 at the time, and after some reading I realized that not only is it a super cool
-(and easy!) attack to perform, there is also a total lack of good tools for
-performing said attack! After hours of adding the wrong number of null bytes or
-incorrectly adding length values, I vowed to write a tool to make this easy for
-myself and anybody else who's trying to do it. So, after a couple weeks of
-work, here it is!
+(and conceptually easy!) attack to perform, there is also a total lack of good
+tools for performing said attack! After hours of adding the wrong number of
+null bytes or incorrectly adding length values, I vowed to write a tool to make
+this easy for myself and anybody else who's trying to do it. So, after a couple
+weeks of work, here it is!
 
 Now I'm gonna release the tool, and hope I didn't totally miss a good tool that
-does the same thing :)
-
-hash_extender implements a length extension attack against every algorithm I
-could think of:
+does the same thing! It's called hash_extender, and implements a length
+extension attack against every algorithm I could think of:
 
 <ul>
   <li>md4</li>
@@ -52,31 +50,32 @@ algorithm left off; it turns out, 100% of the context needed to continue a hash
 is in the output of most hashing algorithms! We simply load that context into
 the appropriate hash structure and continue hashing.
 
-TL;DR: given data with an unknown prefix and a hash, an attacker can append to
-the data and still generate a valid signature.
+TL;DR: given known data with an unknown prefix and a known hash, an attacker
+can append to the data and still generate a valid signature.
 
 <h1>Example</h1>
 
 Let's look at a step-by-step example. For this example:
 
 <ul>
-  <li>let secret = "secret"</li>
-  <li>let data   = "data"</li>
-  <li>let H = md5</li>
-  <li>let signature = hash(secret + data) = "6036708eba0d11f6ef52ad44e8b74d5b"</li>
-  <li>let append = "append"</li>
+  <li>let <em>secret</em>    = "secret"</li>
+  <li>let <em>data</em>      = "data"</li>
+  <li>let <em>H</em>         = md5()</li>
+  <li>let <em>signature</em> = hash(<em>secret</em> + <em>data</em>) = "6036708eba0d11f6ef52ad44e8b74d5b"</li>
+  <li>let <em>append</em>    = "append"</li>
 </ul>
 
 The server sends <em>data</em> and <em>signature</em> to the attacker. The
 attacker guesses that <em>H</em> is md5 simply by its length (it's the most
-common 128-bit hashing algorithm), based on the source, or the specs, or any
-way they are able to.
+common 128-bit hashing algorithm), based on the source, or the application's
+specs, or any way they are able to.
 
 Knowing only <em>data</em>, <em>H</em>, and <em>signature</em>, the attacker's
 goal is to append <em>append</em> to <em>data</em> and generate a valid
 signature for the new data. And that's easy to do! Let's see how.
 
 <h2>Padding</h2>
+
 Before we look at the actual attack, we have to talk a little about padding.
 
 When calculating <em>H</em>(<em>secret</em> + <em>data</em>), the string
@@ -84,15 +83,15 @@ When calculating <em>H</em>(<em>secret</em> + <em>data</em>), the string
 '0' bits, followed by the length of the string. That is, in hex, the padding is
 a 0x80 byte followed by some number of 0x00 bytes and then the length.  The
 number of 0x00 bytes, the number of bytes reserved for the length, and the way
-the length is encoded depends on the particular algorithm and blocksize.
+the length is encoded, depends on the particular algorithm and blocksize.
 
-With most algorithms (including md4, md5, sha1, and sha256), the string is
-padded until its length is congruent to 56 bytes (mod 64) Or, to put it another
-way, it's padded until the length is 8 bytes less than a full (64-byte) block
-(the 8 bytes being size of the encoded length field). There are two hashes
-implemented in hash_extender that don't use these values: sha512 uses a
-128-byte blocksize and reserves 16 bytes for the length field, and whirlpool uses a
-128-byte blocksdize and reserves 32 bytes for the length field.
+With most algorithms (including md4, md5, ripemd160, sha, sha1, and sha256),
+the string is padded until its length is congruent to 56 bytes (mod 64) Or, to
+put it another way, it's padded until the length is 8 bytes less than a full
+(64-byte) block (the 8 bytes being size of the encoded length field). There are
+two hashes implemented in hash_extender that don't use these values: sha512
+uses a 128-byte blocksize and reserves 16 bytes for the length field, and
+whirlpool uses a 128-byte blocksize and reserves 32 bytes for the length field.
 
 The endianness of the length field is also important. md4, md5, and ripemd160
 are little endian, whereas the sha family and whirlpool are big endian. Trust
@@ -120,11 +119,9 @@ Breaking down the string, we have:
   <li>50 00 00 00 00 00 00 00 - The bit length in little endian</li>
 </ul>
 
-This is the exact data that <em>H</em> hashes.
+This is the exact data that <em>H</em> hashed in the original example.
 
-  +------------+
-  | THE ATTACK |
-  +------------+
+<h2>The attack</h2>
 
 Now that we have the data that <em>H</em> hashes, let's look at how to perform
 the actual attack.
@@ -140,7 +137,9 @@ what it looks like:
   0040  61 70 70 65 6e 64                                append
 </pre>
 
-The value of that block of data can be calculated in two ways:
+The hash of that block is what we ultimately want to a) calculate, and b) get
+the server to calculate. The value of that block of data can be calculated in
+two ways:
 
 <ol>
   <li>By sticking it in a buffer and performing <em>H(buffer)</em></li>
@@ -170,8 +169,17 @@ happening because <em>secret</em> and <em>append</em> are the same length.
 Perhaps I shouldn't have chosen that as an example, but I'm not gonna start
 over!
 
-The server will prepend <em>secret</em> to that string and hash it to the
-following value:
+The server will prepend <em>secret</em> to that string, creating:
+<pre>
+  0000  73 65 63 72 65 74 64 61 74 61 80 00 00 00 00 00  secretdata......
+  0010  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  0020  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  0030  00 00 00 00 00 00 00 00 50 00 00 00 00 00 00 00  ........P.......
+  0040  61 70 70 65 6e 64                                append
+</pre>
+
+
+And hashes it to the following value:
 
 6ee582a1669ce442f3719c47430dadee
 
@@ -180,8 +188,8 @@ pasting this into a terminal:
 
 <pre>
 echo '
-#include <stdio.h>
-#include <openssl/md5.h>
+#include &lt;stdio.h&gt;
+#include &lt;openssl/md5.h&gt;
 
 int main(int argc, const char *argv[])
 {
@@ -205,7 +213,7 @@ int main(int argc, const char *argv[])
   }
   printf("\n");
   return 0;
-}' > hash_extension_1.c
+}' &gt; hash_extension_1.c
 gcc -o hash_extension_1 hash_extension_1.c -lssl -lcrypto
 ./hash_extension_1
 
@@ -224,15 +232,15 @@ Well, first, we have to look at what we have: <em>data</em>, <em>append</em>,
 
 We need to define a new function, <em>H&prime;</em>, which uses the same
 hashing algorithm as <em>H</em>, but whose starting state is the final state of
-<em>H</em>(<em>secret</em>+<em>data</em>).
+<em>H</em>(<em>secret</em>+<em>data</em>), ie, <em>signature</em>.
 
 Then, we simply calculate <em>H&prime;</em>(<em>append</em>) and the output of
 that function is our hash. It sounds easy (and is!); have a look at this code:
 
 <pre>
 echo '
-#include <stdio.h>
-#include <openssl/md5.h>
+#include &lt;stdio.h&gt;
+#include &lt;openssl/md5.h&gt;
 
 int main(int argc, const char *argv[])
 {
@@ -242,19 +250,19 @@ int main(int argc, const char *argv[])
   MD5_Init(&amp;c);
   MD5_Update(&amp;c, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", 64);
 
-  c.A = htonl(0x6036708e); /* <-- This is the hash we already had */
+  c.A = htonl(0x6036708e); /* &lt;-- This is the hash we already had */
   c.B = htonl(0xba0d11f6);
   c.C = htonl(0xef52ad44);
   c.D = htonl(0xe8b74d5b);
 
-  MD5_Update(&c, "append", 6); /* This is the appended data. */
-  MD5_Final(buffer, &c);
+  MD5_Update(&amp;c, "append", 6); /* This is the appended data. */
+  MD5_Final(buffer, &amp;c);
   for (i = 0; i &lt; 16; i++) {
     printf("%02x", buffer[i]);
   }
   printf("\n");
   return 0;
-}' > hash_extension_2.c
+}' &gt; hash_extension_2.c
 gcc -o hash_extension_2 hash_extension_2.c -lssl -lcrypto
 ./hash_extension_2
 </pre>
@@ -263,7 +271,8 @@ The the output is, just like before:
 
 6ee582a1669ce442f3719c47430dadee
 
-So we know the signature is right. What's happening!?
+So we know the signature is right. The difference is, we didn't use
+<em>secret</em> at all! What's happening!?
 
 Well, we create a MD5_CTX structure from scratch, just like normal. Then we
 take the md5() value of 64 'A's. We md5() a full (64-byte) block of 'A's to
@@ -271,15 +280,16 @@ ensure that any internal values - other than the state of the hash itself - are
 set to what we expect.
 
 Then, after that is done, we replace c.A, c.B, c.C, and c.D with the values
-that were output from <em>signature</em>: "6036708eba0d11f6ef52ad44e8b74d5b".
+that were found in <em>signature</em>: "6036708eba0d11f6ef52ad44e8b74d5b".
 This puts the MD5_CTX structure in the same state as it finished in originally,
 and means that anything else we hash - in this case <em>append</em> - will
 result in the same thing as it would have resulted in, had we hashed it the
 usual way.
 
-    +--------+
-    | RESULT |
-    +--------+
+We use htonl() on the values before setting the state variables because md5 -
+being little endian - outputs its values in litlte endian as well.
+
+<h3>Result</h3>
 
 So, now we have this string:
 
@@ -295,26 +305,28 @@ And this signature for <em>H</em>(<em>secret</em> + <em>data</em> +
 
 6ee582a1669ce442f3719c47430dadee
 
-And we can generate both without ever knowing what the secret was!
+And we can generate both without ever knowing what the secret was! So, we send
+the string to the server along with our new signature. The server will prepend
+the signature, hash it, and come up with the exact same hash we did (victory!).
 
 <h1>The tool</h1>
 
 This example took me hours to write. Why? Because I made about 1000 mistakes
 writing the code. Too many 00 bytes, not enough 00 bytes, wrong endianness,
 wrong algorithm, used bytes instead of bits for the length, and all sorts of
-other problems. The first time I worked on this type of attack, I spent from
-11pm till 7am trying to get it working, and didn't figure it out till after
-sleeping. And don't even get me started on how long it took to port this attack
-to md5.
+other stupid problems. The first time I worked on this type of attack, I spent
+from 11pm till 7am trying to get it working, and didn't figure it out till
+after sleeping (and with Mak's help). And don't even get me started on how long
+it took to port this attack to md5. Endianness can die in a fire.
 
-Why?
-
-Because this is crypto, and crypto is immensely complicated. There are lots of
-moving parts, lots of sidecases to remember, and it's never clear why something
-is wrong, just that the answer isn't right. What a pain!
+Why is it so difficult? Because this is crypto, and crypto is immensely
+complicated and notoriously difficult to troubleshoot. There are lots of moving
+parts, lots of sidecases to remember, and it's never clear why something is
+wrong, just that the result isn't right. What a pain!
 
 So, I wrote hash_extender. hash_extender is (I hope) the first free tool that
-implements this type of attack. It's easy to use
+implements this type of attack. It's easy to use and implements this attack for
+every algorithm I could think of.
 
 Here's an example of its use:
 
@@ -346,6 +358,61 @@ By default I tried to choose the most reasonable options:
   <li>Output data: hex</li>
   <li>Output hash: hex</li>
 </ul>
+
+Here's the help page for reference:
+<pre>
+--------------------------------------------------------------------------------
+HASH EXTENDER
+--------------------------------------------------------------------------------
+
+By Ron Bowes &lt;ron @ skullsecurity.net&gt;
+
+See LICENSE.txt for license information.
+
+Usage: ./hash_extender &lt;--data=&lt;data&gt;|--file=&lt;file&gt;&gt; --signature=&lt;signature&gt; --format=&lt;format&gt; [options]
+
+INPUT OPTIONS
+-d --data=&lt;data&gt;
+      The original string that we're going to extend.
+--data-format=&lt;raw|html|hex|cstr&gt;
+      The format the string is being passed in as. Default: raw.
+--file=&lt;file&gt;
+      As an alternative to specifying a string, this reads the original string
+      as a file.
+-s --signature=&lt;sig&gt;
+      The original signature.
+--signature-format=&lt;raw|html|hex|cstr&gt;
+      The format the signature is being passed in as. Default: hex.
+-a --append=&lt;data&gt;
+      The data to append to the string. Default: raw.
+--append-format=&lt;raw|html|hex|cstr&gt;
+-f --format=&lt;all|md4|md5|ripemd160|sha|sha1|sha256|sha512|whirlpool&gt; [REQUIRED]
+      The hash_type of the signature. This can be given multiple times if you
+      want to try multiple signatures. 'all' will base the chosen types off
+      the size of the signature and use the hash(es) that make sense.
+-l --secret=&lt;length&gt;
+      The length of the secret, if known. Default: 8.
+--secret-min=&lt;min&gt;
+--secret-max=&lt;max&gt;
+      Try different secret lengths (both options are required)
+
+OUTPUT OPTIONS
+--table
+      Output the string in a table format.
+--out-data-format=&lt;raw|html|html-pure|hex|cstr|cstr-pure|none&gt;
+      Output data format.
+--out-signature-format=&lt;raw|htmlhtml-pure||hex|cstr|cstr-pure|none&gt;
+      Output signature format.
+
+OTHER OPTIONS
+-h --help 
+      Display the usage (this).
+--test
+      Run the test suite.
+-q --quiet
+      Only output what's absolutely necessary (the output string and the
+      signature)
+</pre>
 
 <h1>Defense</h1>
 
