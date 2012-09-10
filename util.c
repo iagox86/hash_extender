@@ -78,18 +78,26 @@ static uint8_t *html_to_raw(char *str, uint64_t *out_length)
     /* The typecasts to 'int' here are to fix warnings from cygwin. */
     if(str[i] == '%' && (i + 2) < strlen(str) && isxdigit((int)str[i + 1]) && isxdigit((int)str[i + 2]))
     {
+      /* This calculation converts a hex digit ([0-9a-fA-F]{2}) to the
+       * appropriate number. */
       c =  (isdigit((int)str[i + 1]) ? (str[i + 1] - '0') : (tolower((int)str[i + 1]) - 'a' + 10)) << 4;
       c |= (isdigit((int)str[i + 2]) ? (str[i + 2] - '0') : (tolower((int)str[i + 2]) - 'a' + 10)) << 0;
+
+      /* Add the new character to the string as a uint8_t. */
       buffer_add_int8(b, c);
+
+      /* We ate three digits here. */
       i += 3;
     }
     else if(str[i] == '+')
     {
+      /* In html encoding, a '+' is a space. */
       buffer_add_int8(b, ' ');
       i++;
     }
     else
     {
+      /* If it's not %NN or +, it's just a raw number.k */
       buffer_add_int8(b, str[i]);
       i++;
     }
