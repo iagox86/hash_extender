@@ -1,5 +1,6 @@
 # ignore objects and archives, anywhere in the tree.
 *.[oa]
+*.exe
 
 hash_extender_test
 hash_extender
