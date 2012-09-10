@@ -64,6 +64,16 @@ void DIE_MEM()
   DIE("Out of memory");
 }
 
+static uint8_t hex_to_int(char *hex)
+{
+  /* These are defined as ints because cygwin. */
+  int digit1 = hex[0];
+  int digit2 = hex[1];
+  return (uint8_t)
+           ((isdigit(digit1) ? (digit1 - '0') : (tolower(digit1) - 'a' + 10)) << 4) |
+           ((isdigit(digit2) ? (digit2 - '0') : (tolower(digit2) - 'a' + 10)) << 0);
+}
+
 /* Convert an html-encoded string (a string containing, for example, %12%34,
  * as well as '+' instead of ' ') to a raw string. Returns the newly allocated
  * string, as well as the length. */
@@ -71,22 +81,16 @@ static uint8_t *html_to_raw(char *str, uint64_t *out_length)
 {
   buffer_t *b = buffer_create(BO_HOST);
   uint64_t i = 0;
-  uint8_t c;
 
   while(i < strlen(str))
   {
     /* The typecasts to 'int' here are to fix warnings from cygwin. */
     if(str[i] == '%' && (i + 2) < strlen(str) && isxdigit((int)str[i + 1]) && isxdigit((int)str[i + 2]))
     {
-      /* This calculation converts a hex digit ([0-9a-fA-F]{2}) to the
-       * appropriate number. */
-      c =  (isdigit((int)str[i + 1]) ? (str[i + 1] - '0') : (tolower((int)str[i + 1]) - 'a' + 10)) << 4;
-      c |= (isdigit((int)str[i + 2]) ? (str[i + 2] - '0') : (tolower((int)str[i + 2]) - 'a' + 10)) << 0;
-
       /* Add the new character to the string as a uint8_t. */
-      buffer_add_int8(b, c);
+      buffer_add_int8(b, hex_to_int(&str[i] + 1));
 
-      /* We ate three digits here. */
+      /* We consumed three digits here. */
       i += 3;
     }
     else if(str[i] == '+')
@@ -103,7 +107,7 @@ static uint8_t *html_to_raw(char *str, uint64_t *out_length)
     }
   }
 
-  return buffer_get(b, out_length);
+  return buffer_create_string_and_destroy(b, out_length);
 }
 
 /* Convert a string in hex format (eg, "ab123d43...") into a raw string.
@@ -112,17 +116,17 @@ static uint8_t *hex_to_raw(char *str, uint64_t *out_length)
 {
   buffer_t *b = buffer_create(BO_HOST);
   uint64_t i = 0;
-  uint8_t c;
 
   while(i + 1 < strlen(str))
   {
-    c =  (isdigit((int)str[i + 0]) ? (str[i + 0] - '0') : (tolower((int)str[i + 0]) - 'a' + 10)) << 4;
-    c |= (isdigit((int)str[i + 1]) ? (str[i + 1] - '0') : (tolower((int)str[i + 1]) - 'a' + 10)) << 0;
-    buffer_add_int8(b, c);
+    /* Add the new character to the string as a uint8_t. */
+    buffer_add_int8(b, hex_to_int(&str[i]));
+
+    /* We consumed three digits here. */
     i += 2;
   }
 
-  return buffer_get(b, out_length);
+  return buffer_create_string_and_destroy(b, out_length);
 }
 
 /**Convert a string in a C-like format (that is, containing literal escapes
@@ -132,15 +136,16 @@ static uint8_t *cstr_to_raw(char *str, uint64_t *out_length)
 {
   buffer_t *b = buffer_create(BO_HOST);
   uint64_t i = 0;
-  uint8_t c;
   uint64_t in_length = strlen(str);
 
   while(i < in_length)
   {
-    /* The typecasts to 'int' here are to fix warnings from cygwin. */
     if(str[i] == '\\')
     {
+      /* Consume the slash. */
       i++;
+
+      /* Check for the various format specifiers - \a, \b, \t, \n, \r, etc) */
       if(i < in_length && str[i] == 'a')
       {
         buffer_add_int8(b, 0x07);
@@ -183,9 +188,10 @@ static uint8_t *cstr_to_raw(char *str, uint64_t *out_length)
       }
       else if(i + 2 < in_length && str[i] == 'x' && isxdigit((int)str[i + 1]) && isxdigit((int)str[i + 2]))
       {
-        c =  (isdigit((int)str[i + 1]) ? (str[i + 1] - '0') : (tolower((int)str[i + 1]) - 'a' + 10)) << 4;
-        c |= (isdigit((int)str[i + 2]) ? (str[i + 2] - '0') : (tolower((int)str[i + 2]) - 'a' + 10)) << 0;
-        buffer_add_int8(b, c);
+        /* Add the new character to the string as a uint8_t. */
+        buffer_add_int8(b, hex_to_int(&str[i] + 1));
+
+        /* We consumed three digits here. */
         i += 3;
       }
       else
@@ -205,7 +211,7 @@ static uint8_t *cstr_to_raw(char *str, uint64_t *out_length)
     }
   }
 
-  return buffer_get(b, out_length);
+  return buffer_create_string_and_destroy(b, out_length);
 }
 
 uint8_t *format_to_raw(char *str, format_t format, uint64_t *out_length)
@@ -296,6 +302,7 @@ void output_format(format_t format, uint8_t *data, uint64_t data_length)
   }
 }
 
+/* Read and return an entire file. */
 uint8_t *read_file(char *filename, uint64_t *out_length)
 {
   char buffer[1024];
@@ -311,5 +318,5 @@ uint8_t *read_file(char *filename, uint64_t *out_length)
     buffer_add_bytes(b, buffer, bytes_read);
   }
 
-  return buffer_get(b, out_length);
+  return buffer_create_string_and_destroy(b, out_length);
 }
