@@ -516,13 +516,13 @@ int main(int argc, char *argv[])
         }
         else if(!strcmp(option_name, "data-format"))
         {
-          if(!strcasecmp(optarg, "raw"))
+          if(!strcmp(optarg, "raw"))
             options.data_format = FORMAT_RAW;
-          else if(!strcasecmp(optarg, "hex"))
+          else if(!strcmp(optarg, "hex"))
             options.data_format = FORMAT_HEX;
-          else if(!strcasecmp(optarg, "html"))
+          else if(!strcmp(optarg, "html"))
             options.data_format = FORMAT_HTML;
-          else if(!strcasecmp(optarg, "cstr"))
+          else if(!strcmp(optarg, "cstr"))
             options.data_format = FORMAT_CSTR;
           else
             error(argv[0], "Unknown option passed to --data-format");
@@ -537,13 +537,13 @@ int main(int argc, char *argv[])
         }
         else if(!strcmp(option_name, "append-format"))
         {
-          if(!strcasecmp(optarg, "raw"))
+          if(!strcmp(optarg, "raw"))
             options.append_format = FORMAT_RAW;
-          else if(!strcasecmp(optarg, "hex"))
+          else if(!strcmp(optarg, "hex"))
             options.append_format = FORMAT_HEX;
-          else if(!strcasecmp(optarg, "html"))
+          else if(!strcmp(optarg, "html"))
             options.append_format = FORMAT_HTML;
-          else if(!strcasecmp(optarg, "cstr"))
+          else if(!strcmp(optarg, "cstr"))
             options.append_format = FORMAT_CSTR;
           else
             error(argv[0], "Unknown option passed to --append-format");
@@ -554,13 +554,13 @@ int main(int argc, char *argv[])
         }
         else if(!strcmp(option_name, "signature-format"))
         {
-          if(!strcasecmp(optarg, "raw"))
+          if(!strcmp(optarg, "raw"))
             options.signature_format = FORMAT_RAW;
-          else if(!strcasecmp(optarg, "hex"))
+          else if(!strcmp(optarg, "hex"))
             options.signature_format = FORMAT_HEX;
-          else if(!strcasecmp(optarg, "html"))
+          else if(!strcmp(optarg, "html"))
             options.signature_format = FORMAT_HTML;
-          else if(!strcasecmp(optarg, "cstr"))
+          else if(!strcmp(optarg, "cstr"))
             options.signature_format = FORMAT_CSTR;
           else
             error(argv[0], "Unknown option passed to --signature-format");
@@ -569,7 +569,7 @@ int main(int argc, char *argv[])
         {
           for(i = 0; hash_types[i].name; i++)
           {
-            if(!strcasecmp(optarg, hash_types[i].name))
+            if(!strcmp(optarg, hash_types[i].name))
             {
               options.formats[i] = 1;
               options.format_count++;
@@ -602,38 +602,38 @@ int main(int argc, char *argv[])
         }
         else if(!strcmp(option_name, "out-data-format"))
         {
-          if(!strcasecmp(optarg, "raw"))
+          if(!strcmp(optarg, "raw"))
             options.out_data = FORMAT_RAW;
-          else if(!strcasecmp(optarg, "html"))
+          else if(!strcmp(optarg, "html"))
             options.out_data = FORMAT_HTML;
-          else if(!strcasecmp(optarg, "html-pure"))
+          else if(!strcmp(optarg, "html-pure"))
             options.out_data = FORMAT_HTML_PURE;
-          else if(!strcasecmp(optarg, "hex"))
+          else if(!strcmp(optarg, "hex"))
             options.out_data = FORMAT_HEX;
-          else if(!strcasecmp(optarg, "cstr"))
+          else if(!strcmp(optarg, "cstr"))
             options.out_data = FORMAT_CSTR;
-          else if(!strcasecmp(optarg, "cstr-pure"))
+          else if(!strcmp(optarg, "cstr-pure"))
             options.out_data = FORMAT_CSTR_PURE;
-          else if(!strcasecmp(optarg, "none"))
+          else if(!strcmp(optarg, "none"))
             options.out_data = FORMAT_NONE;
           else
             error(argv[0], "Unknown option passed to --out-data-format");
         }
         else if(!strcmp(option_name, "out-signature-format"))
         {
-          if(!strcasecmp(optarg, "raw"))
+          if(!strcmp(optarg, "raw"))
             options.out_signature = FORMAT_RAW;
-          else if(!strcasecmp(optarg, "html"))
+          else if(!strcmp(optarg, "html"))
             options.out_signature = FORMAT_HTML;
-          else if(!strcasecmp(optarg, "html-pure"))
+          else if(!strcmp(optarg, "html-pure"))
             options.out_signature = FORMAT_HTML_PURE;
-          else if(!strcasecmp(optarg, "hex"))
+          else if(!strcmp(optarg, "hex"))
             options.out_signature = FORMAT_HEX;
-          else if(!strcasecmp(optarg, "cstr"))
+          else if(!strcmp(optarg, "cstr"))
             options.out_signature = FORMAT_CSTR;
-          else if(!strcasecmp(optarg, "cstr-pure"))
+          else if(!strcmp(optarg, "cstr-pure"))
             options.out_signature = FORMAT_CSTR_PURE;
-          else if(!strcasecmp(optarg, "none"))
+          else if(!strcmp(optarg, "none"))
             options.out_signature = FORMAT_NONE;
           else
             error(argv[0], "Unknown option passed to --out-signature-format");
