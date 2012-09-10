@@ -94,63 +94,102 @@ In our example, <em>secret</em> + <em>data</em> = "secretdata" = 10 (0x0a) bytes
 or 80 (0x50) bits. That means we need 46 bytes of padding (80 00 00 00 00 ...)
 followed by our 8-byte little endian length (50 00 00 00 00 00 00 00), giving us
 a padded string of:
-<pre>secretdata%80%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%50%00%00%00%00%00%00%00</pre>
-
-TODO: make this pretty
-
-That's the exact data that was hashed, which means we know the md5 of that exact
-string. Let's break it up into what each part means:
-To break it up:
-- "secret" - the original secret.
-- "data" - the original data.
-- "%80"  - the leading '1' bit for the padding.
-- "%00" * 45 - Enough padding that "secretdata" + padding = 56 bytes.
-- "%50%00%00%00%00%00%00%00" - The length, in bits, of the original data (10 *
-  8 = 80 = 0x50), encoded in little endian.
-
-Let's call that string "pdata", for the sake of simpilicity.
-
-Our goal is to add "append" to the string, then calculate md5(pdata + append).
-It turns out, that's possible without knowing "secret"!
-
-First, the value we're going to send to the server will be pdata without the
-"secret" value and with "append" appended::
-data%80%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%50%00%00%00%00%00%00%00append
-
-The server will prepend "secret" and attempt to hash it as:
-secretdata%80%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%50%00%00%00%00%00%00%00append
-
-And wind up with:
-6ee582a1669ce442f3719c47430dadee
-
-You can test it with the following code:
 <pre>
-  int main(int argc, const char *argv[])
-  {
-    MD5_CTX c;
-    unsigned char buffer[MD5_DIGEST_LENGTH];
-    int i;
-
-    MD5_Init(&c);
-    MD5_Update(&c, "secret", 6);
-    MD5_Update(&c, "data", 4);
-    MD5_Update(&c, "\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-                   "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-                   "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-                   "\x00\x00\x00\x00", 46);
-    MD5_Update(&c, "\x50\x00\x00\x00\x00\x00\x00\x00", 8);
-    MD5_Update(&c, "append", 6);
-    MD5_Final(buffer, &c);
-
-    for (i = 0; i < 16; i++) {
-      printf("%02x", buffer[i]);
-    }
-    printf("\n");
-    return 0;
-  }
+  0000  73 65 63 72 65 74 64 61 74 61 80 00 00 00 00 00  secretdata......
+  0010  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  0020  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  0030  00 00 00 00 00 00 00 00 50 00 00 00 00 00 00 00  ........P.......
 </pre>
 
-Now, that's the signature that the server generates. How do *we* generate it?
+Breaking down the string, we have:
+- "secret" = <em>secret</em>
+- "data" = <em>data</em>
+- 80 00 00 ... - The 46 bytes of padding, starting with 0x80
+- 50 00 00 00 00 00 00 00 - The bit length in little endian
+
+This is the exact data that <em>H</em> hashes.
+
+  +------------+
+  | THE ATTACK |
+  +------------+
+Now that we have the data that <em>H</em> hashes, let's look at how to perform
+the actual attack.
+
+First, let's just append <em>append</em> to the string. Easy enough! Here's
+what it looks like:
+<pre>
+  0000  73 65 63 72 65 74 64 61 74 61 80 00 00 00 00 00  secretdata......
+  0010  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  0020  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  0030  00 00 00 00 00 00 00 00 50 00 00 00 00 00 00 00  ........P.......
+  0040  61 70 70 65 6e 64                                append
+</pre>
+
+The value of that block of data can be calculated in two ways:
+<ol>
+  <li>By sticking it in a buffer and performing <em>H(buffer)</em></li>
+  <li>By starting at the end of the first block, using the state we already
+      know from the original hash, and hashing <em>append</em> starting at
+      that state</li>
+</ol>
+
+The first method is what the server will do, and the second is what the
+attacker will do. Let's look at the server, first, since it's the easier
+example.
+
+We know the server will prepend <em>secret</em> to the string, so we send it
+the string minus the <em>secret</em> value:
+<pre>
+  0000  64 61 74 61 80 00 00 00 00 00 00 00 00 00 00 00  data............
+  0010  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  0020  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  0030  00 00 50 00 00 00 00 00 00 00 61 70 70 65 6e 64  ..P.......append
+</pre>
+
+Don't be fooled by this being exactly 64 bytes (the blocksize) - that's only
+happening because <em>secret</em> and <em>append</em> are the same length.
+
+The server will prepend <em>secret</em> to that string and hash it to the
+following value:
+6ee582a1669ce442f3719c47430dadee
+
+For those of you playing along at home, you can prove this works by copying
+and pasting this into a terminal:
+<pre>
+echo '
+#include <stdio.h>
+#include <openssl/md5.h>
+
+int main(int argc, const char *argv[])
+{
+  MD5_CTX c;
+  unsigned char buffer[MD5_DIGEST_LENGTH];
+  int i;
+
+  MD5_Init(&c);
+  MD5_Update(&c, "secret", 6);
+  MD5_Update(&c, "data", 4);
+  MD5_Update(&c, "\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+                 "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+                 "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+                 "\x00\x00\x00\x00", 46);
+  MD5_Update(&c, "\x50\x00\x00\x00\x00\x00\x00\x00", 8);
+  MD5_Update(&c, "append", 6);
+  MD5_Final(buffer, &c);
+
+  for (i = 0; i < 16; i++) {
+    printf("%02x", buffer[i]);
+  }
+  printf("\n");
+  return 0;
+}' > hash_extension_1.c
+gcc -lssl -lcrypto -o hash_extension_1 hash_extension_1.c
+./hash_extension_1
+</pre>
+
+All right, so the server is going to be checking the data we send against the
+signature "6ee582a1669ce442f3719c47430dadee". Now, as the attacker, we need to
+figure out how to generate that signature!
 
 Well, first, we have to look at what we have: the data, the appended data, and
 the output of the hash function. It turns out, the output from any of these
