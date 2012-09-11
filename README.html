@@ -87,13 +87,13 @@ string (<em>secret</em> + <em>data</em>) is padded with a '1' bit and
 some number of '0' bits, followed by the length of the string. That is, in hex,
 the padding is a 0x80 byte followed by some number of 0x00 bytes and then the
 length. The number of 0x00 bytes, the number of bytes reserved for the length,
-and the way the length is enemd, depends on the particular algorithm and
+and the way the length is encoded, depends on the particular algorithm and
 blocksize.</p>
 
 <p>With most algorithms (including MD4, MD5, RIPEMD-160, SHA-0, SHA-1, and
 SHA-256), the string is padded until its length is congruent to 56 bytes (mod
 64). Or, to put it another way, it's padded until the length is 8 bytes less
-than a full (64-byte) block (the 8 bytes being size of the enemd length
+than a full (64-byte) block (the 8 bytes being size of the encodedd length
 field). There are two hashes implemented in hash_extender that don't use these
 values: SHA-512 uses a 128-byte blocksize and reserves 16 bytes for the length
 field, and WHIRLPOOL uses a 128-byte blocksize and reserves 32 bytes for the
@@ -245,7 +245,7 @@ having access to <em>secret</em>?</p>
 hashing algorithm as <em>H</em>, but whose starting state is the final state
 of <em>H(secret || data)</em>, i.e., <em>signature</em>. Once we have
 that, we simply calculate <em>H&prime;(append)</em> and the output of that
-function is our hash. It sounds easy (and is!); have a look at this em:</p>
+function is our hash. It sounds easy (and is!); have a look at this code:</p>
 
 <pre>
   echo '
@@ -330,7 +330,7 @@ will prepend the signature, hash it, and come up with the exact same hash we did
 <h1>The tool</h1>
 
 <p>This example took me hours to write. Why? Because I made about a thousand
-mistakes writing the em. Too many NUL bytes, not enough NUL bytes, wrong
+mistakes writing the code. Too many NUL bytes, not enough NUL bytes, wrong
 endianness, wrong algorithm, used bytes instead of bits for the length, and all
 sorts of other stupid problems. The first time I worked on this type of attack,
 I spent from 2300h till 0700h trying to get it working, and didn't figure it out
