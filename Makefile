@@ -28,11 +28,11 @@ all: $(BINS)
 
 $(BIN_MAIN): $(OBJS_MAIN)
 	@echo [LD] $@
-	@$(CC) $(CFLAGS) $(LDFLAGS) -o $(BIN_MAIN) $(OBJS_MAIN)
+	@$(CC) $(CFLAGS) -o $(BIN_MAIN) $(OBJS_MAIN) $(LDFLAGS)
 
 $(BIN_TEST): $(OBJS_TEST)
 	@echo [LD] $@
-	@$(CC) $(CFLAGS) $(LDFLAGS) -o $(BIN_TEST) $(OBJS_TEST)
+	@$(CC) $(CFLAGS) -o $(BIN_TEST) $(OBJS_TEST) $(LDFLAGS)
 
 %.o: %.c
 	@echo [CC] $@
