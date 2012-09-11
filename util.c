@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "buffer.h"
+#include "test.h"
 #include "util.h"
 
 void print_hex(unsigned char *data, unsigned int length)
@@ -319,3 +320,68 @@ uint8_t *read_file(char *filename, uint64_t *out_length)
 
   return buffer_create_string_and_destroy(b, out_length);
 }
+
+static void test_hex_to_int()
+{
+  int i;
+  char buffer[3] = "\0\0\0";
+
+  printf("Testing hex_to_int...\n");
+  for(i = 0; i < 256; i++)
+  {
+    sprintf(buffer, "%02x", i);
+    test_check_integer("hex_to_int", hex_to_int(buffer), i);
+  }
+}
+
+static void test_format_string()
+{
+  int i;
+  char buffer[32];
+  uint8_t *result;
+  uint64_t length;
+
+  char expected[32];
+  size_t expected_length;
+
+  printf("Testing format_to_raw()...\n");
+  for(i = 0; i < 255; i++)
+  {
+    sprintf(buffer, "%%%02x - %02x - \\x%02x", i, i, i);
+
+    result = format_to_raw(buffer, FORMAT_NONE, &length);
+    test_check_memory("format_to_raw(FORMAT_NONE)", (uint8_t*)"", 0, result, length);
+
+    sprintf(buffer, "%%%02x - a - %%%02x", i, i);
+    expected_length = sprintf(expected, "%c - a - %c", i, i);
+    result = format_to_raw(buffer, FORMAT_HTML, &length);
+    test_check_memory("format_to_raw(FORMAT_HTML)", (uint8_t*)expected, expected_length, result, length);
+
+    sprintf(buffer, "%%%02x - a - %%%02x", i, i + 1);
+    expected_length = sprintf(expected, "%c - a - %c", i, i + 1);
+    result = format_to_raw(buffer, FORMAT_HTML_PURE, &length);
+    test_check_memory("format_to_raw(FORMAT_HTML_PURE)", (uint8_t*)expected, expected_length, result, length);
+
+    sprintf(buffer, "%02x%02x%02x", (uint8_t)(i - 1), (uint8_t)i, (uint8_t)(i + 1));
+    expected_length = sprintf(expected, "%c%c%c", i - 1, i, i + 1);
+    result = format_to_raw(buffer, FORMAT_HEX, &length);
+    test_check_memory("format_to_raw(FORMAT_HEX)", (uint8_t*)expected, expected_length, result, length);
+
+    sprintf(buffer, "\\x%02x - a - \\x%02x", (uint8_t)i, (uint8_t)(i + 1));
+    expected_length = sprintf(expected, "%c - a - %c", i, i + 1);
+    result = format_to_raw(buffer, FORMAT_CSTR, &length);
+    test_check_memory("format_to_raw(FORMAT_CSTR)", (uint8_t*)expected, expected_length, result, length);
+
+    sprintf(buffer, "\\x%02x - a - \\x%02x", (uint8_t)i, (uint8_t)(i + 1));
+    expected_length = sprintf(expected, "%c - a - %c", i, i + 1);
+    result = format_to_raw(buffer, FORMAT_CSTR_PURE, &length);
+    test_check_memory("format_to_raw(FORMAT_CSTR_PURE)", (uint8_t*)expected, expected_length, result, length);
+  }
+}
+
+void util_test()
+{
+  test_hex_to_int();
+  test_format_string();
+}
+

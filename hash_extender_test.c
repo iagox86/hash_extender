@@ -24,6 +24,7 @@ int main()
 #ifndef DISABLE_WHIRLPOOL
   whirlpool_test();
 #endif
+  util_test();
 
   test_report();
 

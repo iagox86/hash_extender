@@ -38,4 +38,6 @@ void output_format(format_t format, uint8_t *data, uint64_t data_length);
 
 uint8_t *read_file(char *filename, uint64_t *out_length);
 
+void util_test();
+
 #endif
