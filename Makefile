@@ -7,7 +7,7 @@ WHIRLPOOL	:= -DDISABLE_WHIRLPOOL
 endif
 
 # Capture the operating system name for use by the preprocessor.
-OS		:= $(shell uname -o | tr '[[:lower:]]' '[[:upper:]]')
+OS		:= $(shell uname -o | tr '/[[:lower:]]' '_[[:upper:]]')
 
 # These are the specifications of the toolchain
 CC		:= gcc
