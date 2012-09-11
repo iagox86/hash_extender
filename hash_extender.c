@@ -158,58 +158,61 @@ void go(options_t *options)
 
 void usage(char *program)
 {
-  printf("\n");
-  printf("--------------------------------------------------------------------------------\n");
-  printf("HASH EXTENDER\n");
-  printf("--------------------------------------------------------------------------------\n");
-  printf("\n");
-  printf("By Ron Bowes <ron @ skullsecurity.net>\n");
-  printf("\n");
-  printf("See LICENSE.txt for license information.\n");
-  printf("\n");
-  printf("Usage: %s <--data=<data>|--file=<file>> --signature=<signature> --format=<format> [options]\n", program);
-  printf("\n");
-  printf("INPUT OPTIONS\n");
-  printf("-d --data=<data>\n");
-  printf("      The original string that we're going to extend.\n");
-  printf("--data-format=<raw|html|hex|cstr>\n");
-  printf("      The format the string is being passed in as. Default: raw.\n");
-  printf("--file=<file>\n");
-  printf("      As an alternative to specifying a string, this reads the original string\n");
-  printf("      as a file.\n");
-  printf("-s --signature=<sig>\n");
-  printf("      The original signature.\n");
-  printf("--signature-format=<raw|html|hex|cstr>\n");
-  printf("      The format the signature is being passed in as. Default: hex.\n");
-  printf("-a --append=<data>\n");
-  printf("      The data to append to the string. Default: raw.\n");
-  printf("--append-format=<raw|html|hex|cstr>\n");
-  printf("-f --format=<all|md4|md5|ripemd160|sha|sha1|sha256|sha512|whirlpool> [REQUIRED]\n");
-  printf("      The hash_type of the signature. This can be given multiple times if you\n");
-  printf("      want to try multiple signatures. 'all' will base the chosen types off\n");
-  printf("      the size of the signature and use the hash(es) that make sense.\n");
-  printf("-l --secret=<length>\n");
-  printf("      The length of the secret, if known. Default: 8.\n");
-  printf("--secret-min=<min>\n");
-  printf("--secret-max=<max>\n");
-  printf("      Try different secret lengths (both options are required)\n");
-  printf("\n");
-  printf("OUTPUT OPTIONS\n");
-  printf("--table\n");
-  printf("      Output the string in a table format.\n");
-  printf("--out-data-format=<raw|html|html-pure|hex|cstr|cstr-pure|none>\n");
-  printf("      Output data format.\n");
-  printf("--out-signature-format=<raw|htmlhtml-pure||hex|cstr|cstr-pure|none>\n");
-  printf("      Output signature format.\n");
-  printf("\n");
-  printf("OTHER OPTIONS\n");
-  printf("-h --help \n");
-  printf("      Display the usage (this).\n");
-  printf("--test\n");
-  printf("      Run the test suite.\n");
-  printf("-q --quiet\n");
-  printf("      Only output what's absolutely necessary (the output string and the\n");
-  printf("      signature)\n");
+  printf(
+    "\n"
+    "--------------------------------------------------------------------------------\n"
+    "HASH EXTENDER\n"
+    "--------------------------------------------------------------------------------\n"
+    "\n"
+    "By Ron Bowes <ron @ skullsecurity.net>\n"
+    "\n"
+    "See LICENSE.txt for license information.\n"
+    "\n"
+    "Usage: %s <--data=<data>|--file=<file>> --signature=<signature> --format=<format> [options]\n"
+    "\n"
+    "INPUT OPTIONS\n"
+    "-d --data=<data>\n"
+    "      The original string that we're going to extend.\n"
+    "--data-format=<raw|html|hex|cstr>\n"
+    "      The format the string is being passed in as. Default: raw.\n"
+    "--file=<file>\n"
+    "      As an alternative to specifying a string, this reads the original string\n"
+    "      as a file.\n"
+    "-s --signature=<sig>\n"
+    "      The original signature.\n"
+    "--signature-format=<raw|html|hex|cstr>\n"
+    "      The format the signature is being passed in as. Default: hex.\n"
+    "-a --append=<data>\n"
+    "      The data to append to the string. Default: raw.\n"
+    "--append-format=<raw|html|hex|cstr>\n"
+    "-f --format=<all|md4|md5|ripemd160|sha|sha1|sha256|sha512|whirlpool> [REQUIRED]\n"
+    "      The hash_type of the signature. This can be given multiple times if you\n"
+    "      want to try multiple signatures. 'all' will base the chosen types off\n"
+    "      the size of the signature and use the hash(es) that make sense.\n"
+    "-l --secret=<length>\n"
+    "      The length of the secret, if known. Default: 8.\n"
+    "--secret-min=<min>\n"
+    "--secret-max=<max>\n"
+    "      Try different secret lengths (both options are required)\n"
+    "\n"
+    "OUTPUT OPTIONS\n"
+    "--table\n"
+    "      Output the string in a table format.\n"
+    "--out-data-format=<raw|html|html-pure|hex|cstr|cstr-pure|none>\n"
+    "      Output data format.\n"
+    "--out-signature-format=<raw|htmlhtml-pure||hex|cstr|cstr-pure|none>\n"
+    "      Output signature format.\n"
+    "\n"
+    "OTHER OPTIONS\n"
+    "-h --help \n"
+    "      Display the usage (this).\n"
+    "--test\n"
+    "      Run the test suite.\n"
+    "-q --quiet\n"
+    "      Only output what's absolutely necessary (the output string and the\n"
+    "      signature)\n",
+    program
+  );
 }
 
 void error(char *program, char *message)
