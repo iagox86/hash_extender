@@ -43,9 +43,11 @@ void test_check_memory(char *description, uint8_t *expected, uint64_t expected_l
     printf("FAIL: %s\n", description);
     printf("  Expected: ");
     print_hex(expected, expected_length);
+    printf("   --> (\"%s\")\n", expected);
 
     printf("  Result:   ");
     print_hex(result, result_length);
+    printf("   --> (\"%s\")\n", result);
 
     printf("\n");
   }
@@ -77,7 +79,7 @@ void test_report()
   else
   {
     printf("--------------------------------------------------------------------------------\n");
-    printf("TESTS PASSED: %d / %d [%2.2f%%]\n", tests_passed, tests_run, 100 * (float)tests_passed / tests_run);
+    printf("TESTS PASSED: %d / %d [%2.4f%%]\n", tests_passed, tests_run, 100 * (float)tests_passed / tests_run);
     printf("--------------------------------------------------------------------------------\n");
   }
 }
