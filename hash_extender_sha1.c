@@ -1,3 +1,7 @@
+#ifdef FREEBSD
+#include <sys/endian.h>
+#endif
+
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <string.h>

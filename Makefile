@@ -1,26 +1,47 @@
-# These includes are simply to decide whether or not to compile whirlpool
-# support.
-INCLUDE_OPENSSL=/usr/include/openssl
-INCLUDE_WHIRLPOOL=whrlpool.h
-
 # Checks if /usr/include/openssl/whrlpool.h exists, and set a define if it
 # doesn't.
+INCLUDE_OPENSSL		:= /usr/include/openssl
+INCLUDE_WHIRLPOOL	:= whrlpool.h
 ifneq ($(shell ls $(INCLUDE_OPENSSL)/$(INCLUDE_WHIRLPOOL) 2>/dev/null), $(INCLUDE_OPENSSL)/$(INCLUDE_WHIRLPOOL))
-	WHIRLPOOL=-DDISABLE_WHIRLPOOL
+WHIRLPOOL	:= -DDISABLE_WHIRLPOOL
 endif
 
-CFLAGS:=-std=c89 -g -oS -Wall -Werror -D_BSD_SOURCE $(WHIRLPOOL)
-LIBS:=-lssl -lcrypto
+# Capture the operating system name for use by the preprocessor.
+OS		:= $(shell uname -o | tr '[[:lower:]]' '[[:upper:]]')
 
-all: hash_extender hash_extender_test
+# These are the specifications of the toolchain
+CC		:= gcc
+CFLAGS		:= -std=c89 -g -oS -Wall -Werror
+CPPFLAGS	:= -D_BSD_SOURCE -D$(OS) $(WHIRLPOOL)
+LDFLAGS		:= -lssl -lcrypto
 
-hash_extender_test: hash_extender_test.o hash_extender_md4.o hash_extender_md5.o hash_extender_ripemd160.o hash_extender_sha.o hash_extender_sha1.o hash_extender_sha256.o hash_extender_sha512.o hash_extender_whirlpool.o test.o buffer.o util.o
-	gcc -o hash_extender_test hash_extender_test.o hash_extender_md4.o hash_extender_md5.o hash_extender_ripemd160.o hash_extender_sha.o hash_extender_sha1.o hash_extender_sha256.o hash_extender_sha512.o hash_extender_whirlpool.o test.o buffer.o util.o $(LIBS)
+BIN_MAIN	:= hash_extender
+BIN_TEST	:= hash_extender_test
+BINS		:= $(BIN_MAIN) $(BIN_TEST)
 
-hash_extender: hash_extender.o hash_extender_md4.o hash_extender_md5.o hash_extender_ripemd160.o hash_extender_sha.o hash_extender_sha1.o hash_extender_sha256.o hash_extender_sha512.o hash_extender_whirlpool.o test.o buffer.o util.o
-	gcc -o hash_extender hash_extender.o hash_extender_md4.o hash_extender_md5.o hash_extender_ripemd160.o hash_extender_sha.o hash_extender_sha1.o hash_extender_sha256.o hash_extender_sha512.o hash_extender_whirlpool.o test.o buffer.o util.o $(LIBS)
+SRCS		:= $(wildcard *.c)
+OBJS		:= $(patsubst %.c,%.o,$(SRCS))
+OBJS_MAIN	:= $(filter-out $(BIN_TEST).o,$(OBJS))
+OBJS_TEST	:= $(filter-out $(BIN_MAIN).o,$(OBJS))
+
+all: $(BINS)
+
+$(BIN_MAIN): $(OBJS_MAIN)
+	@echo [LD] $@
+	@$(CC) $(CFLAGS) $(LDFLAGS) -o $(BIN_MAIN) $(OBJS_MAIN)
+
+$(BIN_TEST): $(OBJS_TEST)
+	@echo [LD] $@
+	@$(CC) $(CFLAGS) $(LDFLAGS) -o $(BIN_TEST) $(OBJS_TEST)
+
+%.o: %.c
+	@echo [CC] $@
+	@$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 clean:
-	rm -f *.o *.exe
-	rm -f hash_extender hash_extender_test
-
+	@echo [RM] \*.o
+	@rm -f $(OBJS)
+	@echo [RM] $(BIN_MAIN)
+	@rm -f $(BIN_MAIN)
+	@echo [RM] $(BIN_TEST)
+	@rm -f $(BIN_TEST)
