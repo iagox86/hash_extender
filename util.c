@@ -245,19 +245,22 @@ uint8_t *format_to_raw(char *str, format_t format, uint64_t *out_length)
   return NULL;
 }
 
-void output_format(format_t format, uint8_t *data, uint64_t data_length)
+static uint8_t *output_format_internal(format_t format, uint8_t *data, uint64_t data_length, uint64_t *out_length)
 {
   uint64_t i;
+  buffer_t *b = buffer_create(BO_HOST);
+  char tmp[16]; /* For holding temporary values. */
 
   if(format == FORMAT_NONE)
   {
     /* Don't output at all. */
+    return buffer_create_string_and_destroy(b, out_length);
   }
   else if(format == FORMAT_RAW)
   {
     /* Output the bytes directly. */
     for(i = 0; i < data_length; i++)
-      printf("%c", data[i]);
+      buffer_add_int8(b, data[i]);
   }
   else if(format == FORMAT_HTML || format == FORMAT_HTML_PURE)
   {
@@ -267,22 +270,26 @@ void output_format(format_t format, uint8_t *data, uint64_t data_length)
     {
       if((isalpha(data[i]) || isdigit(data[i])) && format != FORMAT_HTML_PURE)
       {
-        printf("%c", data[i]);
+        buffer_add_int8(b, data[i]);
       }
       else if(data[i] == ' ')
       {
-        printf(" ");
+        buffer_add_int8(b, ' ');
       }
       else
       {
-        printf("%%%02x", data[i]);
+        sprintf(tmp, "%%%02x", data[i]);
+        buffer_add_string(b, tmp);
       }
     }
   }
   else if(format == FORMAT_HEX)
   {
     for(i = 0; i < data_length; i++)
-      printf("%02x", data[i]);
+    {
+      sprintf(tmp, "%02x", data[i]);
+      buffer_add_string(b, tmp);
+    }
   }
   else if(format ==  FORMAT_CSTR || format == FORMAT_CSTR_PURE)
   {
@@ -292,14 +299,27 @@ void output_format(format_t format, uint8_t *data, uint64_t data_length)
     {
       if((isalpha(data[i]) || isdigit(data[i])) && format != FORMAT_CSTR_PURE)
       {
-        printf("%c", data[i]);
+        buffer_add_int8(b, data[i]);
       }
       else
       {
-        printf("\\x%02x", data[i]);
+        sprintf(tmp, "\\x%02x", data[i]);
+        buffer_add_string(b, tmp);
       }
     }
   }
+
+  return buffer_create_string_and_destroy(b, out_length);
+}
+
+void output_format(format_t format, uint8_t *data, uint64_t data_length)
+{
+  uint8_t *out_data;
+  uint64_t out_length;
+
+  out_data = output_format_internal(format, data, data_length, &out_length);
+  fwrite(out_data, 1, out_length, stdout);
+  free(out_data);
 }
 
 /* Read and return an entire file. */
