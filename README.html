@@ -11,10 +11,10 @@ contest at https://stripe-ctf.com. One of the levels of the contest required us
 to perform a hash length extension attack. I had never even heard of the attack
 at the time, and after some reading I realized that not only is it a super cool
 (and conceptually easy!) attack to perform, there is also a total lack of good
-tools for performing said attack! After hours of adding the wrong number of null
-bytes or incorrectly adding length values, I vowed to write a tool to make this
-easy for myself and anybody else who's trying to do it. So, after a couple weeks
-of work, here it is!</p>
+tools for performing said attack! After hours of adding the wrong number of
+null bytes or incorrectly adding length values, I vowed to write a tool to make
+this easy for myself and anybody else who's trying to do it. So, after a couple
+weeks of work, here it is!</p>
 
 <p>Now I'm gonna release the tool, and hope I didn't totally miss a good tool
 that does the same thing! It's called hash_extender, and implements a length
@@ -31,29 +31,29 @@ extension attack against every algorithm I could think of:</p>
   <li>WHIRLPOOL</li>
 </ul>
 
-<p>I'm more than happy to extend this to cover other hashing algorithms as well,
-provided they are "vulnerable" to this attack &mdash; MD2, SHA-224, and SHA-384
-are not. Please contact me if you have other candidates and I'll add them
-ASAP!</p>
+<p>I'm more than happy to extend this to cover other hashing algorithms as
+well, provided they are "vulnerable" to this attack &mdash; MD2, SHA-224, and
+SHA-384 are not. Please contact me if you have other candidates and I'll add
+them ASAP!</p>
 
 <h1>The attack</h1>
 
 <p>An application is susceptible to a hash length extension attack if it
 prepends a secret value to a string, hashes it with a vulnerable algorithm, and
 entrusts the attacker with both the string and the hash, but not the secret.
-Then, the server relies on the secret to decide whether or not the data returned
-later is the same as the original data.</p>
+Then, the server relies on the secret to decide whether or not the data
+returned later is the same as the original data.</p>
 
 <p>It turns out, even though the attacker doesn't know the value of the
-prepended secret, he can still generate a valid hash for <em>{secret || data
-|| attacker_controlled_data}</em>! This is done by simply picking up where the
-hashing algorithm left off; it turns out, 100% of the state needed to continue a
-hash is in the output of most hashing algorithms! We simply load that state into
-the appropriate hash structure and continue hashing.</p>
+prepended secret, he can still generate a valid hash for <em>{secret || data ||
+  attacker_controlled_data}</em>! This is done by simply picking up where the
+hashing algorithm left off; it turns out, 100% of the state needed to continue
+a hash is in the output of most hashing algorithms! We simply load that state
+into the appropriate hash structure and continue hashing.</p>
 
 <p><strong>TL;DR: given a hash that is composed of a string with an unknown
-prefix, an attacker can append to the string and produce a new hash that
-still has the unknown prefix.</strong></p>
+  prefix, an attacker can append to the string and produce a new hash that
+  still has the unknown prefix.</strong></p>
 
 <h1>Example</h1>
 
@@ -67,33 +67,31 @@ still has the unknown prefix.</strong></p>
   <li>let <em>append    = "append"</em></li>
 </ul>
 
-<p>The server sends <em>data</em> and <em>signature</em> to the
-attacker. The attacker guesses that <em>H</em> is MD5 simply by its length
-(it's the most common 128-bit hashing algorithm), based on the source, or the
-application's specs, or any way they are able to.</p>
+<p>The server sends <em>data</em> and <em>signature</em> to the attacker. The
+attacker guesses that <em>H</em> is MD5 simply by its length (it's the most
+common 128-bit hashing algorithm), based on the source, or the application's
+specs, or any way they are able to.</p>
 
-<p>Knowing only <em>data</em>, <em>H</em>, and <em>signature</em>,
-the attacker's goal is to append <em>append</em> to <em>data</em> and
-generate a valid signature for the new data. And that's easy to do! Let's see
-how.</p>
+<p>Knowing only <em>data</em>, <em>H</em>, and <em>signature</em>, the
+attacker's goal is to append <em>append</em> to <em>data</em> and generate a
+valid signature for the new data. And that's easy to do! Let's see how.</p>
 
 <h2>Padding</h2>
 
 <p>Before we look at the actual attack, we have to talk a little about
 padding.</p>
 
-<p>When calculating <em>H</em>(<em>secret</em> + <em>data</em>), the
-string (<em>secret</em> + <em>data</em>) is padded with a '1' bit and
-some number of '0' bits, followed by the length of the string. That is, in hex,
-the padding is a 0x80 byte followed by some number of 0x00 bytes and then the
-length. The number of 0x00 bytes, the number of bytes reserved for the length,
-and the way the length is encoded, depends on the particular algorithm and
-blocksize.</p>
+<p>When calculating <em>H</em>(<em>secret</em> + <em>data</em>), the string
+(<em>secret</em> + <em>data</em>) is padded with a '1' bit and some number of
+'0' bits, followed by the length of the string. That is, in hex, the padding is
+a 0x80 byte followed by some number of 0x00 bytes and then the length. The
+number of 0x00 bytes, the number of bytes reserved for the length, and the way
+the length is encoded, depends on the particular algorithm and blocksize.</p>
 
 <p>With most algorithms (including MD4, MD5, RIPEMD-160, SHA-0, SHA-1, and
 SHA-256), the string is padded until its length is congruent to 56 bytes (mod
 64). Or, to put it another way, it's padded until the length is 8 bytes less
-than a full (64-byte) block (the 8 bytes being size of the encodedd length
+than a full (64-byte) block (the 8 bytes being size of the encoded length
 field). There are two hashes implemented in hash_extender that don't use these
 values: SHA-512 uses a 128-byte blocksize and reserves 16 bytes for the length
 field, and WHIRLPOOL uses a 128-byte blocksize and reserves 32 bytes for the
@@ -103,8 +101,8 @@ length field.</p>
 RIPEMD-160 are little-endian, whereas the SHA family and WHIRLPOOL are
 big-endian. Trust me, that distinction cost me days of work!</p>
 
-<p>In our example, <em>length(secret || data) = length("secretdata")</em> is
-10 (0x0a) bytes, or 80 (0x50) bits. So, we have 10 bytes of data
+<p>In our example, <em>length(secret || data) = length("secretdata")</em> is 10
+(0x0a) bytes, or 80 (0x50) bits. So, we have 10 bytes of data
 (<em>"secretdata"</em>), 46 bytes of padding (80 00 00 ...), and an 8-byte
 little-endian length field (50 00 00 00 00 00 00 00), for a total of 64 bytes
 (or one block). Put together, it looks like this:</p>
@@ -125,16 +123,15 @@ little-endian length field (50 00 00 00 00 00 00 00), for a total of 64 bytes
   <li>50 00 00 00 00 00 00 00 &mdash; The bit length in little endian</li>
 </ul>
 
-<p>This is the exact data that <em>H</em> hashed in the original
-example.</p>
+<p>This is the exact data that <em>H</em> hashed in the original example.</p>
 
 <h2>The attack</h2>
 
 <p>Now that we have the data that <em>H</em> hashes, let's look at how to
 perform the actual attack.</p>
 
-<p>First, let's just append <em>append</em> to the string. Easy enough!
-Here's what it looks like:</p>
+<p>First, let's just append <em>append</em> to the string. Easy enough!  Here's
+what it looks like:</p>
 
 <pre>
   0000  73 65 63 72 65 74 64 61 74 61 80 00 00 00 00 00  secretdata......
@@ -144,9 +141,9 @@ Here's what it looks like:</p>
   0040  61 70 70 65 6e 64                                append
 </pre>
 
-<p>The hash of that block is what we ultimately want to a) calculate, and b) get
-the server to calculate. The value of that block of data can be calculated in
-two ways:</p>
+<p>The hash of that block is what we ultimately want to a) calculate, and b)
+get the server to calculate. The value of that block of data can be calculated
+in two ways:</p>
 
 <ol>
   <li>By sticking it in a buffer and performing <em>H(buffer)</em></li>
@@ -161,8 +158,8 @@ example.</p>
 
 <h3>Server's calculation</h3>
 
-<p>We know the server will prepend <em>secret</em> to the string, so we send
-it the string minus the <em>secret</em> value:</p>
+<p>We know the server will prepend <em>secret</em> to the string, so we send it
+the string minus the <em>secret</em> value:</p>
 
 <pre>
   0000  64 61 74 61 80 00 00 00 00 00 00 00 00 00 00 00  data............
@@ -171,8 +168,8 @@ it the string minus the <em>secret</em> value:</p>
   0030  00 00 50 00 00 00 00 00 00 00 61 70 70 65 6e 64  ..P.......append
 </pre>
 
-<p>Don't be fooled by this being exactly 64 bytes (the blocksize) &mdash; that's
-only happening because <em>secret</em> and <em>append</em> are the same
+<p>Don't be fooled by this being exactly 64 bytes (the blocksize) &mdash;
+that's only happening because <em>secret</em> and <em>append</em> are the same
 length. Perhaps I shouldn't have chosen that as an example, but I'm not gonna
 start over!</p>
 
@@ -229,8 +226,8 @@ and pasting this into a terminal:</p>
   ./hash_extension_1
 </pre>
 
-<p>All right, so the server is going to be checking the data we send against the
-signature <em>6ee582a1669ce442f3719c47430dadee</em>. Now, as the attacker,
+<p>All right, so the server is going to be checking the data we send against
+the signature <em>6ee582a1669ce442f3719c47430dadee</em>. Now, as the attacker,
 we need to figure out how to generate that signature!</p>
 
 <h3>Client's calculation</h3>
@@ -242,10 +239,10 @@ having access to <em>secret</em>?</p>
 <em>append</em>, <em>H</em>, and <em>H(secret || data)</em>.</p>
 
 <p>We need to define a new function, <em>H&prime;</em>, which uses the same
-hashing algorithm as <em>H</em>, but whose starting state is the final state
-of <em>H(secret || data)</em>, i.e., <em>signature</em>. Once we have
-that, we simply calculate <em>H&prime;(append)</em> and the output of that
-function is our hash. It sounds easy (and is!); have a look at this code:</p>
+hashing algorithm as <em>H</em>, but whose starting state is the final state of
+<em>H(secret || data)</em>, i.e., <em>signature</em>. Once we have that, we
+simply calculate <em>H&prime;(append)</em> and the output of that function is
+our hash. It sounds easy (and is!); have a look at this code:</p>
 
 <pre>
   echo '
@@ -289,15 +286,15 @@ function is our hash. It sounds easy (and is!); have a look at this code:</p>
 <p>So we know the signature is right. The difference is, we didn't use
 <em>secret</em> at all! What's happening!?</p>
 
-<p>Well, we create a <em>MD5_CTX</em> structure from scratch, just like
-normal. Then we take the MD5 of 64 'A's. We take the MD5 of a full (64-byte)
-block of 'A's to ensure that any internal values &mdash; other than the state of
-the hash itself &mdash; are set to what we expect.</p>
+<p>Well, we create a <em>MD5_CTX</em> structure from scratch, just like normal.
+Then we take the MD5 of 64 'A's. We take the MD5 of a full (64-byte) block of
+'A's to ensure that any internal values &mdash; other than the state of the
+hash itself &mdash; are set to what we expect.</p>
 
 <p>Then, after that is done, we replace <em>c.A</em>, <em>c.B</em>,
 <em>c.C</em>, and <em>c.D</em> with the values that were found in
-<em>signature</em>: <em>6036708eba0d11f6ef52ad44e8b74d5b</em>. This puts
-the MD5_CTX structure in the same state as it finished in originally, and means
+<em>signature</em>: <em>6036708eba0d11f6ef52ad44e8b74d5b</em>. This puts the
+MD5_CTX structure in the same state as it finished in originally, and means
 that anything else we hash &mdash; in this case <em>append</em> &mdash; will
 produce the same output as it would have had we hashed it the usual way.</p>
 
@@ -324,8 +321,8 @@ little-endian as well.</p>
 
 <p>And we can generate the signature without ever knowing what the secret was!
 So, we send the string to the server along with our new signature. The server
-will prepend the signature, hash it, and come up with the exact same hash we did
-(victory!).</p>
+will prepend the signature, hash it, and come up with the exact same hash we
+did (victory!).</p>
 
 <h1>The tool</h1>
 
@@ -333,18 +330,18 @@ will prepend the signature, hash it, and come up with the exact same hash we did
 mistakes writing the code. Too many NUL bytes, not enough NUL bytes, wrong
 endianness, wrong algorithm, used bytes instead of bits for the length, and all
 sorts of other stupid problems. The first time I worked on this type of attack,
-I spent from 2300h till 0700h trying to get it working, and didn't figure it out
-till after sleeping (and with Mak's help). And don't even get me started on how
-long it took to port this attack to MD5. Endianness can die in a fire.</p>
+I spent from 2300h till 0700h trying to get it working, and didn't figure it
+out till after sleeping (and with Mak's help). And don't even get me started on
+how long it took to port this attack to MD5. Endianness can die in a fire.</p>
 
 <p>Why is it so difficult? Because this is crypto, and crypto is
 <em>immensely</em> complicated and notoriously difficult to troubleshoot. There
 are lots of moving parts, lots of side cases to remember, and it's never clear
 why something is wrong, just that the result isn't right. What a pain!</p>
 
-<p>So, I wrote hash_extender. hash_extender is (I hope) the first free tool that
-implements this type of attack. It's easy to use and implements this attack for
-every algorithm I could think of.</p>
+<p>So, I wrote hash_extender. hash_extender is (I hope) the first free tool
+that implements this type of attack. It's easy to use and implements this
+attack for every algorithm I could think of.</p>
 
 <p>Here's an example of its use:</p>
 
@@ -368,9 +365,8 @@ well if you're trying multiple algorithms:</p>
 
 <p>There are plenty of options for how you format inputs and outputs, including
 HTML (where you use <em>%NN</em> notation), CString (where you use
-<em>\xNN</em> notation, as well as <em>\r</em>, <em>\n</em>,
-<em>\t</em>, etc.), hex (such as how the hashes were specified above),
-etc.</p>
+<em>\xNN</em> notation, as well as <em>\r</em>, <em>\n</em>, <em>\t</em>,
+etc.), hex (such as how the hashes were specified above), etc.</p>
 
 <p>By default I tried to choose what I felt were the most reasonable
 options:</p>
