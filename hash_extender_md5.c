@@ -15,7 +15,6 @@
 #define MD5_BLOCK 64
 #define MD5_LENGTH_SIZE 8
 
-
 void md5_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
 {
   uint64_t i;

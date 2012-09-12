@@ -1,7 +1,6 @@
 #ifndef __HASH_EXTENDER_ENGINE_H__
 #define __HASH_EXTENDER_ENGINE_H__
 
-#include "hash_extender_md5.h"
 #include "util.h"
 
 /* The hashing function that each implementation needs to impelement. */

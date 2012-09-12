@@ -14,6 +14,25 @@
 #define WHIRLPOOL_BLOCK 64
 #define WHIRLPOOL_LENGTH_SIZE 32
 
+void whirlpool_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
+{
+  uint64_t i;
+
+  WHIRLPOOL_CTX c;
+  WHIRLPOOL_Init(&c);
+
+  if(state)
+  {
+    for(i = 0; i < state_size; i++)
+      WHIRLPOOL_Update(&c, "A", 1);
+    memcpy(c.H.c, state, WHIRLPOOL_DIGEST_LENGTH);
+  }
+
+  WHIRLPOOL_Update(&c, data, length);
+  WHIRLPOOL_Final(buffer, &c);
+}
+
+
 /* Note: this only supports data with a 4-byte size (4.2 billion bits). */
 uint8_t *whirlpool_append_data(uint8_t *data, uint64_t data_length, uint64_t secret_length, uint8_t *append, uint64_t append_length, uint64_t *new_length)
 {

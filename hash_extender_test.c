@@ -15,19 +15,11 @@
 
 int main()
 {
-  hash_type_2_t hash_type = hash_types_2[0];
-  uint8_t signature[MD5_DIGEST_LENGTH];
-  uint8_t new_signature[MD5_DIGEST_LENGTH];
+  int i;
 
-  hash_gen_signature(hash_type, (uint8_t*)"secret", 6, (uint8_t*)"data", 4, signature);
+  for(i = 0; hash_types_2[i].name; i++)
+    hash_test(hash_types_2[i]);
 
-  printf("Type: %s\n", hash_type.name); 
-  print_hex(signature, MD5_DIGEST_LENGTH);
-
-  hash_gen_signature_evil(hash_type, 6, 4, signature, (uint8_t *)"append", 6, new_signature);
-  print_hex(new_signature, MD5_DIGEST_LENGTH);
-
-  hash_test(hash_type);
   test_report();
 
 #if 0

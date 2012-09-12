@@ -4,6 +4,15 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include "hash_extender_md4.h"
+#include "hash_extender_md5.h"
+#include "hash_extender_ripemd160.h"
+#include "hash_extender_sha.h"
+#include "hash_extender_sha1.h"
+#include "hash_extender_sha256.h"
+#include "hash_extender_sha512.h"
+#include "hash_extender_whirlpool.h"
+
 #include "hash_extender_engine.h"
 
 #include "buffer.h"
@@ -12,20 +21,17 @@
 
 hash_type_2_t hash_types_2[] = {
 #if 0
-  {"md4",       MD4_DIGEST_LENGTH,       md4_hash},
 #endif
 
-  {"md5",       MD5_DIGEST_LENGTH,       TRUE, 64, 8, md5_hash},
-
-#if 0
-  {"ripemd160", RIPEMD160_DIGEST_LENGTH, ripemd160_hash},
-  {"sha",       SHA_DIGEST_LENGTH,       sha_hash},
-  {"sha1",      SHA_DIGEST_LENGTH,       sha1_hash},
-  {"sha256",    SHA256_DIGEST_LENGTH,    sha256_hash},
-  {"sha512",    SHA512_DIGEST_LENGTH,    sha512_hash},
+  {"md4",       MD4_DIGEST_LENGTH,       TRUE,  64,  8,  md4_hash},
+  {"md5",       MD5_DIGEST_LENGTH,       TRUE,  64,  8,  md5_hash},
+  {"ripemd160", RIPEMD160_DIGEST_LENGTH, TRUE,  64,  8,  ripemd160_hash},
+  {"sha",       SHA_DIGEST_LENGTH,       FALSE, 64,  8,  sha_hash},
+  {"sha1",      SHA_DIGEST_LENGTH,       FALSE, 64,  8,  sha1_hash},
+  {"sha256",    SHA256_DIGEST_LENGTH,    FALSE, 64,  8,  sha256_hash},
+  {"sha512",    SHA512_DIGEST_LENGTH,    FALSE, 128, 16, sha512_hash},
 #ifndef DISABLE_WHIRLPOOL
-  {"whirlpool", WHIRLPOOL_DIGEST_LENGTH, whirlpool_hash},
-#endif
+  {"whirlpool", WHIRLPOOL_DIGEST_LENGTH, FALSE, 64,  32, whirlpool_hash},
 #endif
   {0, 0, 0, 0, 0}
 };
@@ -130,7 +136,7 @@ static void hash_test_extension(hash_type_2_t hash_type)
   uint8_t original_signature[hash_type.digest_size];
   uint8_t new_signature[hash_type.digest_size];
 
-  printf("Testing some basic hash data...\n");
+  printf("%s: Testing some basic hash data...\n", hash_type.name);
 
   /* Get the original signature. */
   hash_gen_signature(hash_type, secret, strlen((char*)secret), data, strlen((char*)data), original_signature);
@@ -142,7 +148,7 @@ static void hash_test_extension(hash_type_2_t hash_type)
   hash_gen_signature_evil(hash_type, strlen((char*)secret), strlen((char*)data), original_signature, append, strlen((char*)append), new_signature);
 
   /* Check the new signature. */
-  test_check_boolean("hash basic extension", hash_test_validate(hash_type, secret, strlen((char*)secret), new_data, new_length, new_signature));
+  test_check_boolean(" basic extension", hash_test_validate(hash_type, secret, strlen((char*)secret), new_data, new_length, new_signature));
 
   free(new_data);
 }
@@ -160,7 +166,7 @@ static void hash_test_lengths(hash_type_2_t hash_type)
 
   uint64_t i;
 
-  printf("Testing hash data of various lengths...\n");
+  printf("%s: Testing hash data of various lengths...\n", hash_type.name);
 
   for(i = 0; i < 993; i++)
   {
@@ -174,7 +180,7 @@ static void hash_test_lengths(hash_type_2_t hash_type)
     hash_gen_signature_evil(hash_type, i, strlen((char*)data), original_signature, append, strlen((char*)append), new_signature);
 
     /* Check the new signature. */
-    test_check_boolean("hash different lengths (secret)", hash_test_validate(hash_type, secret, i, new_data, new_length, new_signature));
+    test_check_boolean(" different lengths (secret)", hash_test_validate(hash_type, secret, i, new_data, new_length, new_signature));
 
     /* Free the memory we allocatd. */
     free(new_data);
@@ -192,7 +198,7 @@ static void hash_test_lengths(hash_type_2_t hash_type)
     hash_gen_signature_evil(hash_type, strlen((char*)secret), i, original_signature, append, strlen((char*)append), new_signature);
 
     /* Check the new signature. */
-    test_check_boolean("hash different lengths (data)", hash_test_validate(hash_type, secret, strlen((char*)secret), new_data, new_length, new_signature));
+    test_check_boolean(" different lengths (data)", hash_test_validate(hash_type, secret, strlen((char*)secret), new_data, new_length, new_signature));
 
     /* Free the memory we allocatd. */
     free(new_data);
@@ -210,7 +216,7 @@ static void hash_test_lengths(hash_type_2_t hash_type)
     hash_gen_signature_evil(hash_type, strlen((char*)secret), strlen((char*)data), original_signature, append, i, new_signature);
 
     /* Check the new signature. */
-    test_check_boolean("hash different lengths (secret)", hash_test_validate(hash_type, secret, strlen((char*)secret), new_data, new_length, new_signature));
+    test_check_boolean(" different lengths (secret)", hash_test_validate(hash_type, secret, strlen((char*)secret), new_data, new_length, new_signature));
 
     /* Free the memory we allocatd. */
     free(new_data);

@@ -15,6 +15,29 @@
 #define RIPEMD160_BLOCK 64
 #define RIPEMD160_LENGTH_SIZE 8
 
+void ripemd160_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
+{
+  uint64_t i;
+
+  RIPEMD160_CTX c;
+  RIPEMD160_Init(&c);
+
+  if(state)
+  {
+    for(i = 0; i < state_size; i++)
+      RIPEMD160_Update(&c, "A", 1);
+
+    c.A = htole32(((int*)state)[0]);
+    c.B = htole32(((int*)state)[1]);
+    c.C = htole32(((int*)state)[2]);
+    c.D = htole32(((int*)state)[3]);
+    c.E = htole32(((int*)state)[4]);
+  }
+
+  RIPEMD160_Update(&c, data, length);
+  RIPEMD160_Final(buffer, &c);
+}
+
 /* Note: this only supports data with a 4-byte size (4.2 billion bits). */
 uint8_t *ripemd160_append_data(uint8_t *data, uint64_t data_length, uint64_t secret_length, uint8_t *append, uint64_t append_length, uint64_t *new_length)
 {
