@@ -17,8 +17,8 @@ int main()
 {
   int i;
 
-  for(i = 0; hash_types_2[i].name; i++)
-    hash_test(hash_types_2[i]);
+  for(i = 0; hash_types[i].name; i++)
+    hash_test(hash_types[i]);
 
   test_report();
 

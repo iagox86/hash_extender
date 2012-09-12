@@ -7,13 +7,7 @@
 #include "buffer.h"
 #include "util.h"
 
-#include "hash_extender_md4.h"
-#include "hash_extender_md5.h"
-#include "hash_extender_ripemd160.h"
-#include "hash_extender_sha.h"
-#include "hash_extender_sha1.h"
-#include "hash_extender_sha256.h"
-#include "hash_extender_sha512.h"
+#include "hash_extender_engine.h"
 
 #ifndef DISABLE_WHIRLPOOL
 #include "hash_extender_whirlpool.h"
@@ -23,38 +17,6 @@
 #define VERSION "0.01"
 #define AUTHOR "Ron Bowes"
 #define EMAIL "ron@skullsecurity.net"
-
-/* Define the types of the append, signature, and evil signature functions so
- * we can use them as function pointers later. */
-typedef uint8_t *(append_data_t)(uint8_t *data, uint64_t data_length, uint64_t secret_length, uint8_t *append, uint64_t append_length, uint64_t *new_length);
-typedef void(gen_signature_t)(uint8_t *secret, uint64_t secret_length, uint8_t *data, uint64_t data_length, uint8_t signature[]);
-typedef void(gen_signature_evil_t)(uint64_t secret_length, uint64_t data_length, uint8_t original_signature[], uint8_t *append, uint64_t append_length, uint8_t new_signature[]);
-
-/* Define a list of structs. */
-typedef struct
-{
-  char                 *name;
-  uint64_t              hash_size;
-  append_data_t        *append_data;
-  gen_signature_t      *gen_signature;
-  gen_signature_evil_t *gen_signature_evil;
-} hash_type_t;
-
-hash_type_t hash_types[] = {
-  {"md4",       MD4_DIGEST_LENGTH,       md4_append_data,       md4_gen_signature,       md4_gen_signature_evil},
-  {"md5",       MD5_DIGEST_LENGTH,       md5_append_data,       md5_gen_signature,       md5_gen_signature_evil},
-  {"ripemd160", RIPEMD160_DIGEST_LENGTH, ripemd160_append_data, ripemd160_gen_signature, ripemd160_gen_signature_evil},
-  {"sha",       SHA_DIGEST_LENGTH,       sha_append_data,       sha_gen_signature,       sha_gen_signature_evil},
-  {"sha1",      SHA_DIGEST_LENGTH,       sha1_append_data,      sha1_gen_signature,      sha1_gen_signature_evil},
-  {"sha256",    SHA256_DIGEST_LENGTH,    sha256_append_data,    sha256_gen_signature,    sha256_gen_signature_evil},
-  {"sha512",    SHA512_DIGEST_LENGTH,    sha512_append_data,    sha512_gen_signature,    sha512_gen_signature_evil},
-#ifndef DISABLE_WHIRLPOOL
-  {"whirlpool", WHIRLPOOL_DIGEST_LENGTH, whirlpool_append_data, whirlpool_gen_signature, whirlpool_gen_signature_evil},
-#endif
-  {0, 0, 0, 0, 0}
-};
-
-#define MAX_DIGEST_LENGTH SHA512_DIGEST_LENGTH
 
 /* Define the various options we can set. */
 typedef struct {
@@ -75,7 +37,7 @@ typedef struct {
   uint8_t  *signature;
   uint64_t  signature_length;
 
-  uint8_t   formats[sizeof(hash_types) / sizeof(hash_type_t)];
+  BOOL      *formats;
   uint8_t   format_count;
 
   uint64_t  secret_min;
@@ -141,13 +103,13 @@ void go(options_t *options)
       if(options->formats[i])
       {
         /* Generate the new data. */
-        new_data = hash_types[i].append_data(options->data, options->data_length, secret_length, options->append, options->append_length, &new_length);
+        new_data = hash_append_data(hash_types[i], options->data, options->data_length, secret_length, options->append, options->append_length, &new_length);
 
         /* Generate the signature for it.  */
-        hash_types[i].gen_signature_evil(secret_length, options->data_length, options->signature, options->append, options->append_length, new_signature);
+        hash_gen_signature_evil(hash_types[i], secret_length, options->data_length, options->signature, options->append, options->append_length, new_signature);
 
         /* Display the result to the user. */
-        output(options, hash_types[i].name, secret_length, new_data, new_length, new_signature, hash_types[i].hash_size);
+        output(options, hash_types[i].name, secret_length, new_data, new_length, new_signature, hash_types[i].digest_size);
 
         /* Free the buffer. */
         free(new_data);
@@ -264,6 +226,7 @@ int main(int argc, char *argv[])
   };
 
   memset(&options, 0, sizeof(options_t));
+  options.formats = (BOOL*) malloc(hash_type_count * sizeof(BOOL));
 
   opterr = 0;
   while((c = getopt_long_only(argc, argv, "", long_options, &option_index)) != EOF)
@@ -500,7 +463,7 @@ int main(int argc, char *argv[])
     /* If no signature was given, figure out which, if any, make sense. */
     for(i = 0; hash_types[i].name; i++)
     {
-      if(options.signature_length == hash_types[i].hash_size)
+      if(options.signature_length == hash_types[i].digest_size)
       {
         options.formats[i] = 1;
         options.format_count++;
@@ -515,9 +478,9 @@ int main(int argc, char *argv[])
   /* Sanity check the length of the signature. */
   for(i = 0; hash_types[i].name; i++)
   {
-    if(options.formats[i] && options.signature_length != hash_types[i].hash_size)
+    if(options.formats[i] && options.signature_length != hash_types[i].digest_size)
     {
-      fprintf(stderr, "%s's signature needs to be %"PRId64" bytes", hash_types[i].name, hash_types[i].hash_size);
+      fprintf(stderr, "%s's signature needs to be %"PRId64" bytes", hash_types[i].name, hash_types[i].digest_size);
       exit(1);
     }
   }
