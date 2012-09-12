@@ -7,6 +7,11 @@
 #include <stdint.h>
 
 typedef enum {
+  FALSE = 0,
+  TRUE  = 1
+} BOOL;
+
+typedef enum {
   /* Don't output anything at all. */
   FORMAT_NONE = 1,
 
