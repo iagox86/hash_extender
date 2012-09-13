@@ -35,8 +35,6 @@ hash_type_t hash_types[] = {
 
 uint64_t hash_type_count = (sizeof(hash_types) / sizeof(hash_type_t));
 
-
-
 /* Note: this only supports data with a 4-byte size (4.2 billion bits). */
 uint8_t *hash_append_data(hash_type_t hash_type, uint8_t *data, uint64_t data_length, uint64_t secret_length, uint8_t *append, uint64_t append_length, uint64_t *new_length)
 {

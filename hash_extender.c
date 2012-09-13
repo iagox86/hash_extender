@@ -116,6 +116,8 @@ void go(options_t *options)
 
 void usage(char *program)
 {
+  int i;
+
   printf(
     "\n"
     "--------------------------------------------------------------------------------\n"
@@ -126,7 +128,13 @@ void usage(char *program)
     "\n"
     "See LICENSE.txt for license information.\n"
     "\n"
-    "Usage: %s <--data=<data>|--file=<file>> --signature=<signature> --format=<format> [options]\n"
+    );
+
+  printf(
+    "Usage: %s <--data=<data>|--file=<file>> --signature=<signature> --format=<format> [options]\n",
+    program);
+
+  printf(
     "\n"
     "INPUT OPTIONS\n"
     "-d --data=<data>\n"
@@ -143,10 +151,18 @@ void usage(char *program)
     "-a --append=<data>\n"
     "      The data to append to the string. Default: raw.\n"
     "--append-format=<raw|html|hex|cstr>\n"
-    "-f --format=<all|md4|md5|ripemd160|sha|sha1|sha256|sha512|whirlpool> [REQUIRED]\n"
+    "-f --format=<all|format> [REQUIRED]\n"
     "      The hash_type of the signature. This can be given multiple times if you\n"
     "      want to try multiple signatures. 'all' will base the chosen types off\n"
     "      the size of the signature and use the hash(es) that make sense.\n"
+    "      Valid types: "
+    );
+
+  for(i = 0; hash_types[i].name; i++)
+    printf("%s%s", hash_types[i].name, hash_types[i+1].name ? ", " : "");
+  printf("\n");
+
+  printf(
     "-l --secret=<length>\n"
     "      The length of the secret, if known. Default: 8.\n"
     "--secret-min=<min>\n"
@@ -168,9 +184,9 @@ void usage(char *program)
     "      Run the test suite.\n"
     "-q --quiet\n"
     "      Only output what's absolutely necessary (the output string and the\n"
-    "      signature)\n",
-    program
+    "      signature)\n"
   );
+
 }
 
 void error(char *program, char *message)
