@@ -19,24 +19,9 @@ int main()
 
   for(i = 0; hash_types[i].name; i++)
     hash_test(hash_types[i]);
-
-  test_report();
-
-#if 0
-  md4_test();
-  md5_test();
-  ripemd160_test();
-  sha1_test();
-  sha256_test();
-  sha512_test();
-  sha_test();
-#ifndef DISABLE_WHIRLPOOL
-  whirlpool_test();
-#endif
   util_test();
 
   test_report();
-#endif
 
   return 0;
 }
