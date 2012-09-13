@@ -9,14 +9,10 @@
 
 #include "hash_extender_engine.h"
 
-#ifndef DISABLE_WHIRLPOOL
-#include "hash_extender_whirlpool.h"
-#endif
-
-#define NAME "Hash Extender"
-#define VERSION "0.01"
-#define AUTHOR "Ron Bowes"
-#define EMAIL "ron@skullsecurity.net"
+#define NAME    "Hash Extender"
+#define VERSION "0.02"
+#define AUTHOR  "Ron Bowes"
+#define EMAIL   "ron@skullsecurity.net"
 
 /* Define the various options we can set. */
 typedef struct {

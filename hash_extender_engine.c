@@ -1,8 +1,8 @@
 #include <stdio.h>
-#include <arpa/inet.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <arpa/inet.h>
 
 #include "hash_extender_md4.h"
 #include "hash_extender_md5.h"
