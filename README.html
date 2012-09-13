@@ -94,7 +94,7 @@ SHA-256), the string is padded until its length is congruent to 56 bytes (mod
 than a full (64-byte) block (the 8 bytes being size of the encoded length
 field). There are two hashes implemented in hash_extender that don't use these
 values: SHA-512 uses a 128-byte blocksize and reserves 16 bytes for the length
-field, and WHIRLPOOL uses a 128-byte blocksize and reserves 32 bytes for the
+field, and WHIRLPOOL uses a 64-byte blocksize and reserves 32 bytes for the
 length field.</p>
 
 <p>The endianness of the length field is also important. MD4, MD5, and
