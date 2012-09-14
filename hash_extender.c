@@ -41,8 +41,8 @@ typedef struct {
   uint64_t  secret_max;
 
   uint8_t   out_table;
-  format_t  *out_data;
-  format_t  *out_signature;
+  format_t  *out_data_format;
+  format_t  *out_signature_format;
 
   uint8_t   quiet;
 } options_t;
@@ -53,7 +53,7 @@ void output_format(format_t *format, uint8_t *data, uint64_t data_length)
   uint64_t out_length;
 
   out_data = format->encoder(data, data_length, &out_length);
-  fwrite(out_data, 1, out_length, stdout);
+  fwrite(out_data, sizeof(uint8_t), out_length, stdout);
   free(out_data);
 }
 
@@ -62,15 +62,15 @@ void output(options_t *options, char *type, uint64_t secret_length, uint8_t *new
 {
   if(options->quiet)
   {
-    output_format(options->out_signature, new_signature, new_signature_length);
-    output_format(options->out_data, new_data, new_data_length);
+    output_format(options->out_signature_format, new_signature, new_signature_length);
+    output_format(options->out_data_format, new_data, new_data_length);
   }
   else if(options->out_table)
   {
     printf("%-9s ", type);
-    output_format(options->out_signature, new_signature, new_signature_length);
+    output_format(options->out_signature_format, new_signature, new_signature_length);
     printf(" ");
-    output_format(options->out_data, new_data, new_data_length);
+    output_format(options->out_data_format, new_data, new_data_length);
     printf("\n");
   }
   else
@@ -80,11 +80,11 @@ void output(options_t *options, char *type, uint64_t secret_length, uint8_t *new
     printf("Secret length: %"PRId64"\n", secret_length);
 
     printf("New signature: ");
-    output_format(options->out_signature, new_signature, new_signature_length);
+    output_format(options->out_signature_format, new_signature, new_signature_length);
     printf("\n");
 
     printf("New string: ");
-    output_format(options->out_data, new_data, new_data_length);
+    output_format(options->out_data_format, new_data, new_data_length);
     printf("\n");
 
     printf("\n");
@@ -150,23 +150,29 @@ void usage(char *program)
     "INPUT OPTIONS\n"
     "-d --data=<data>\n"
     "      The original string that we're going to extend.\n"
-    "--data-format=<raw|html|hex|cstr>\n"
+    "--data-format=<format>\n"
     "      The format the string is being passed in as. Default: raw.\n"
+    "      Valid formats: %s\n"
     "--file=<file>\n"
     "      As an alternative to specifying a string, this reads the original string\n"
     "      as a file.\n"
     "-s --signature=<sig>\n"
     "      The original signature.\n"
-    "--signature-format=<raw|html|hex|cstr>\n"
+    "--signature-format=<format>\n"
     "      The format the signature is being passed in as. Default: hex.\n"
+    "      Valid formats: %s\n"
     "-a --append=<data>\n"
     "      The data to append to the string. Default: raw.\n"
-    "--append-format=<raw|html|hex|cstr>\n"
+    "--append-format=<format>\n"
+    "      Valid formats: %s\n"
     "-f --format=<all|format> [REQUIRED]\n"
     "      The hash_type of the signature. This can be given multiple times if you\n"
     "      want to try multiple signatures. 'all' will base the chosen types off\n"
     "      the size of the signature and use the hash(es) that make sense.\n"
-    "      Valid types: "
+    "      Valid types: ",
+    decode_formats,
+    decode_formats,
+    decode_formats
     );
 
   for(i = 0; hash_types[i].name; i++)
@@ -185,22 +191,10 @@ void usage(char *program)
     "      Output the string in a table format.\n"
     "--out-data-format=<format>\n"
     "      Output data format.\n"
-    "      Valid formats: "
-    );
-  for(i = 0; formats[i].name; i++)
-    printf("%s%s", formats[i].name, formats[i+1].name ? ", " : "");
-  printf("\n");
-
-  printf(
+    "      Valid formats: %s\n"
     "--out-signature-format=<format>\n"
     "      Output signature format.\n"
-    "      Valid formats: "
-    );
-  for(i = 0; formats[i].name; i++)
-    printf("%s%s", formats[i].name, formats[i+1].name ? ", " : "");
-  printf("\n");
-
-  printf(
+    "      Valid formats: %s\n"
     "\n"
     "OTHER OPTIONS\n"
     "-h --help \n"
@@ -209,7 +203,9 @@ void usage(char *program)
     "      Run the test suite.\n"
     "-q --quiet\n"
     "      Only output what's absolutely necessary (the output string and the\n"
-    "      signature)\n"
+    "      signature)\n",
+    encode_formats,
+    encode_formats
   );
 
 }
@@ -344,14 +340,14 @@ int main(int argc, char *argv[])
         }
         else if(!strcmp(option_name, "out-data-format"))
         {
-          options.out_data = format_get_by_name(optarg);
-          if(!options.out_data)
+          options.out_data_format = format_get_by_name(optarg);
+          if(!options.out_data_format)
             error(argv[0], "Unknown option passed to --out-data-format");
         }
         else if(!strcmp(option_name, "out-signature-format"))
         {
-          options.out_signature = format_get_by_name(optarg);
-          if(!options.out_signature)
+          options.out_signature_format = format_get_by_name(optarg);
+          if(!options.out_signature_format)
             error(argv[0], "Unknown option passed to --out-signature-format");
         }
         else if(!strcmp(option_name, "help") || !strcmp(option_name, "h"))
@@ -429,11 +425,11 @@ int main(int argc, char *argv[])
     error(argv[0], "--secret-min and --secret-max can't be used separately, please specify both.");
   }
 
-  if(!options.data_format)      options.data_format      = format_get_by_name("raw");
-  if(!options.append_format)    options.append_format    = format_get_by_name("raw");
-  if(!options.signature_format) options.signature_format = format_get_by_name("hex");
-  if(!options.out_data)         options.out_data         = format_get_by_name("hex");
-  if(!options.out_signature)    options.out_signature    = format_get_by_name("hex");
+  if(!options.data_format)          options.data_format          = format_get_by_name("raw");
+  if(!options.append_format)        options.append_format        = format_get_by_name("raw");
+  if(!options.signature_format)     options.signature_format     = format_get_by_name("hex");
+  if(!options.out_data_format)      options.out_data_format      = format_get_by_name("hex");
+  if(!options.out_signature_format) options.out_signature_format = format_get_by_name("hex");
 
   /* Convert the data appropriately. */
   if(options.data_raw)
