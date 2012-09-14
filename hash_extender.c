@@ -18,19 +18,19 @@
 /* Define the various options we can set. */
 typedef struct {
   char     *data_raw;
-  format_t_2  *data_format;
+  format_t  *data_format;
   uint8_t  *data;
   uint64_t  data_length;
 
   char     *append_raw;
-  format_t_2  *append_format;
+  format_t  *append_format;
   uint8_t  *append;
   uint64_t  append_length;
 
   char     *filename;
 
   char     *signature_raw;
-  format_t_2  *signature_format;
+  format_t  *signature_format;
   uint8_t  *signature;
   uint64_t  signature_length;
 
@@ -41,13 +41,13 @@ typedef struct {
   uint64_t  secret_max;
 
   uint8_t   out_table;
-  format_t_2  *out_data;
-  format_t_2  *out_signature;
+  format_t  *out_data;
+  format_t  *out_signature;
 
   uint8_t   quiet;
 } options_t;
 
-void output_format(format_t_2 *format, uint8_t *data, uint64_t data_length)
+void output_format(format_t *format, uint8_t *data, uint64_t data_length)
 {
   uint8_t *out_data;
   uint64_t out_length;
