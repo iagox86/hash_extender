@@ -20,6 +20,18 @@ uint8_t *encode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 uint8_t *decode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 uint8_t *encode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 
+/* Define some types so we can stores function pointers. */
+typedef uint8_t* (func_decoder)(uint8_t *data, uint64_t data_length, uint64_t *out_length);
+typedef uint8_t* (func_encoder)(uint8_t *data, uint64_t data_length, uint64_t *out_length);
+typedef void (func_test)();
+
+typedef struct {
+  char *name;
+  func_encoder *encoder;
+  func_decoder *decoder;
+  func_test *tester;
+} format_t;
+
 format_t formats[] = {
   {"none", encode_none, NULL, NULL},
   {"raw",  encode_raw,  decode_raw,  NULL},
@@ -29,10 +41,10 @@ format_t formats[] = {
   {0, 0, 0, 0}
 };
 
-char *encode_formats = "none, raw, hex, html, cstr";
-char *decode_formats = "raw, hex, html, cstr";
+const char *encode_formats = "none, raw, hex, html, cstr";
+const char *decode_formats = "raw, hex, html, cstr";
 
-format_t *format_get_by_name(char *name)
+static format_t *format_get_by_name(char *name)
 {
   int i;
   for(i = 0; formats[i].name; i++)
@@ -41,6 +53,34 @@ format_t *format_get_by_name(char *name)
       return &formats[i];
   }
   return NULL;
+}
+
+
+BOOL format_exists(char *format_name)
+{
+  int i;
+  for(i = 0; formats[i].name; i++)
+    if(!strcmp(formats[i].name, format_name))
+      return TRUE;
+  return FALSE;
+}
+
+uint8_t *format_encode(char *format_name, uint8_t *data, uint64_t data_length, uint64_t *out_length)
+{
+  format_t *format = format_get_by_name(format_name);
+  if(format && format->encoder)
+    return format->encoder(data, data_length, out_length);
+  else
+    return NULL;
+}
+
+uint8_t *format_decode(char *format_name, uint8_t *data, uint64_t data_length, uint64_t *out_length)
+{
+  format_t *format = format_get_by_name(format_name);
+  if(format && format->decoder)
+    return format->decoder(data, data_length, out_length);
+  else
+    return NULL;
 }
 
 static uint8_t hex_to_int(uint8_t *hex)

@@ -18,19 +18,19 @@
 /* Define the various options we can set. */
 typedef struct {
   char     *data_raw;
-  format_t  *data_format;
+  char     *data_format;
   uint8_t  *data;
   uint64_t  data_length;
 
   char     *append_raw;
-  format_t  *append_format;
+  char     *append_format;
   uint8_t  *append;
   uint64_t  append_length;
 
   char     *filename;
 
   char     *signature_raw;
-  format_t  *signature_format;
+  char     *signature_format;
   uint8_t  *signature;
   uint64_t  signature_length;
 
@@ -41,18 +41,18 @@ typedef struct {
   uint64_t  secret_max;
 
   uint8_t   out_table;
-  format_t  *out_data_format;
-  format_t  *out_signature_format;
+  char     *out_data_format;
+  char     *out_signature_format;
 
   uint8_t   quiet;
 } options_t;
 
-void output_format(format_t *format, uint8_t *data, uint64_t data_length)
+void output_format(char *format, uint8_t *data, uint64_t data_length)
 {
   uint8_t *out_data;
   uint64_t out_length;
 
-  out_data = format->encoder(data, data_length, &out_length);
+  out_data = format_encode(format, data, data_length, &out_length);
   fwrite(out_data, sizeof(uint8_t), out_length, stdout);
   free(out_data);
 }
@@ -275,8 +275,9 @@ int main(int argc, char *argv[])
         }
         else if(!strcmp(option_name, "data-format"))
         {
-          options.data_format = format_get_by_name(optarg);
-          if(!options.data_format)
+          if(format_exists(optarg))
+            options.data_format = optarg;
+          else
             error(argv[0], "Unknown option passed to --data-format");
         }
         else if(!strcmp(option_name, "file"))
@@ -289,8 +290,9 @@ int main(int argc, char *argv[])
         }
         else if(!strcmp(option_name, "append-format"))
         {
-          options.append_format = format_get_by_name(optarg);
-          if(!options.append_format)
+          if(format_exists(optarg))
+            options.append_format = optarg;
+          else
             error(argv[0], "Unknown option passed to --append-format");
         }
         else if(!strcmp(option_name, "signature") || !strcmp(option_name, "s"))
@@ -299,8 +301,9 @@ int main(int argc, char *argv[])
         }
         else if(!strcmp(option_name, "signature-format"))
         {
-          options.signature_format = format_get_by_name(optarg);
-          if(!options.signature_format)
+          if(format_exists(optarg))
+            options.signature_format = optarg;
+          else
             error(argv[0], "Unknown option passed to --signature-format");
         }
         else if(!strcmp(option_name, "format") || !strcmp(option_name, "f"))
@@ -340,14 +343,16 @@ int main(int argc, char *argv[])
         }
         else if(!strcmp(option_name, "out-data-format"))
         {
-          options.out_data_format = format_get_by_name(optarg);
-          if(!options.out_data_format)
+          if(format_exists(optarg))
+            options.out_data_format = optarg;
+          else
             error(argv[0], "Unknown option passed to --out-data-format");
         }
         else if(!strcmp(option_name, "out-signature-format"))
         {
-          options.out_signature_format = format_get_by_name(optarg);
-          if(!options.out_signature_format)
+          if(format_exists(optarg))
+            options.out_signature_format = optarg;
+          else
             error(argv[0], "Unknown option passed to --out-signature-format");
         }
         else if(!strcmp(option_name, "help") || !strcmp(option_name, "h"))
@@ -425,23 +430,23 @@ int main(int argc, char *argv[])
     error(argv[0], "--secret-min and --secret-max can't be used separately, please specify both.");
   }
 
-  if(!options.data_format)          options.data_format          = format_get_by_name("raw");
-  if(!options.append_format)        options.append_format        = format_get_by_name("raw");
-  if(!options.signature_format)     options.signature_format     = format_get_by_name("hex");
-  if(!options.out_data_format)      options.out_data_format      = format_get_by_name("hex");
-  if(!options.out_signature_format) options.out_signature_format = format_get_by_name("hex");
+  if(!options.data_format)          options.data_format          = "raw";
+  if(!options.append_format)        options.append_format        = "raw";
+  if(!options.signature_format)     options.signature_format     = "hex";
+  if(!options.out_data_format)      options.out_data_format      = "hex";
+  if(!options.out_signature_format) options.out_signature_format = "hex";
 
   /* Convert the data appropriately. */
   if(options.data_raw)
-    options.data = options.data_format->decoder((uint8_t*)options.data_raw, strlen(options.data_raw), &options.data_length);
+    options.data = format_decode(options.data_format, (uint8_t*)options.data_raw, strlen(options.data_raw), &options.data_length);
   else
     options.data = read_file(options.filename, &options.data_length);
 
   /* Convert the appended data. */
-  options.append = options.append_format->decoder((uint8_t*)options.append_raw, strlen(options.append_raw), &options.append_length);
+  options.append = format_decode(options.append_format, (uint8_t*)options.append_raw, strlen(options.append_raw), &options.append_length);
 
   /* Convert the signature. */
-  options.signature = options.signature_format->decoder((uint8_t*)options.signature_raw, strlen(options.signature_raw), &options.signature_length);
+  options.signature = format_decode(options.signature_format, (uint8_t*)options.signature_raw, strlen(options.signature_raw), &options.signature_length);
 
   /* If no formats were given, try to guess it. */
   if(options.format_count == 0)
