@@ -75,7 +75,6 @@ uint8_t *encode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length)
   return result;
 }
 
-
 uint8_t *decode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length)
 {
   buffer_t *b = buffer_create(BO_HOST);
