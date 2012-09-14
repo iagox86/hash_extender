@@ -4,20 +4,39 @@
 #include <stdint.h>
 #include <arpa/inet.h>
 
-#include "hash_extender_md4.h"
-#include "hash_extender_md5.h"
-#include "hash_extender_ripemd160.h"
-#include "hash_extender_sha.h"
-#include "hash_extender_sha1.h"
-#include "hash_extender_sha256.h"
-#include "hash_extender_sha512.h"
-#include "hash_extender_whirlpool.h"
+#ifdef FREEBSD
+#include <sys/endian.h>
+#else
+#include <endian.h>
+#endif
+
+#include <openssl/md4.h>
+#include <openssl/md5.h>
+#include <openssl/ripemd.h>
+#include <openssl/sha.h>
+#include <openssl/sha.h>
+#include <openssl/sha.h>
+#include <openssl/sha.h>
+#ifndef DISABLE_WHIRLPOOL
+#include <openssl/whrlpool.h>
+#endif
 
 #include "hash_extender_engine.h"
 
 #include "buffer.h"
 #include "test.h"
 #include "util.h"
+
+static void md4_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
+static void md5_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
+static void ripemd160_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
+static void sha_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
+static void sha1_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
+static void sha256_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
+static void sha512_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
+#ifndef DISABLE_WHIRLPOOL
+static void whirlpool_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
+#endif
 
 hash_type_t hash_types[] = {
   {"md4",       MD4_DIGEST_LENGTH,       TRUE,  64,  8,  md4_hash},
@@ -226,3 +245,189 @@ void hash_test(hash_type_t hash_type)
   hash_test_lengths(hash_type);
 }
 
+static void md4_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
+{
+  uint64_t i;
+
+  MD4_CTX c;
+  MD4_Init(&c);
+
+  if(state)
+  {
+    for(i = 0; i < state_size; i++)
+      MD4_Update(&c, "A", 1);
+
+    c.A = htole32(((int*)state)[0]);
+    c.B = htole32(((int*)state)[1]);
+    c.C = htole32(((int*)state)[2]);
+    c.D = htole32(((int*)state)[3]);
+  }
+
+  MD4_Update(&c, data, length);
+  MD4_Final(buffer, &c);
+}
+
+static void md5_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
+{
+  uint64_t i;
+
+  MD5_CTX c;
+  MD5_Init(&c);
+
+  if(state)
+  {
+    for(i = 0; i < state_size; i++)
+      MD5_Update(&c, "A", 1);
+
+    c.A = htole32(((int*)state)[0]);
+    c.B = htole32(((int*)state)[1]);
+    c.C = htole32(((int*)state)[2]);
+    c.D = htole32(((int*)state)[3]);
+  }
+
+  MD5_Update(&c, data, length);
+  MD5_Final(buffer, &c);
+}
+
+static void ripemd160_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
+{
+  uint64_t i;
+
+  RIPEMD160_CTX c;
+  RIPEMD160_Init(&c);
+
+  if(state)
+  {
+    for(i = 0; i < state_size; i++)
+      RIPEMD160_Update(&c, "A", 1);
+
+    c.A = htole32(((int*)state)[0]);
+    c.B = htole32(((int*)state)[1]);
+    c.C = htole32(((int*)state)[2]);
+    c.D = htole32(((int*)state)[3]);
+    c.E = htole32(((int*)state)[4]);
+  }
+
+  RIPEMD160_Update(&c, data, length);
+  RIPEMD160_Final(buffer, &c);
+}
+
+static void sha_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
+{
+  uint64_t i;
+
+  SHA_CTX c;
+  SHA_Init(&c);
+
+  if(state)
+  {
+    for(i = 0; i < state_size; i++)
+      SHA_Update(&c, "A", 1);
+
+    c.h0 = htobe32(((int*)state)[0]);
+    c.h1 = htobe32(((int*)state)[1]);
+    c.h2 = htobe32(((int*)state)[2]);
+    c.h3 = htobe32(((int*)state)[3]);
+    c.h4 = htobe32(((int*)state)[4]);
+  }
+
+  SHA_Update(&c, data, length);
+  SHA_Final(buffer, &c);
+}
+
+static void sha1_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
+{
+  uint64_t i;
+
+  SHA_CTX c;
+  SHA1_Init(&c);
+
+  if(state)
+  {
+    for(i = 0; i < state_size; i++)
+      SHA1_Update(&c, "A", 1);
+
+    c.h0 = htobe32(((int*)state)[0]);
+    c.h1 = htobe32(((int*)state)[1]);
+    c.h2 = htobe32(((int*)state)[2]);
+    c.h3 = htobe32(((int*)state)[3]);
+    c.h4 = htobe32(((int*)state)[4]);
+  }
+
+  SHA1_Update(&c, data, length);
+  SHA1_Final(buffer, &c);
+}
+
+static void sha256_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
+{
+  uint64_t i;
+
+  SHA256_CTX c;
+  SHA256_Init(&c);
+
+  if(state)
+  {
+    for(i = 0; i < state_size; i++)
+      SHA256_Update(&c, "A", 1);
+
+    c.h[0] = htobe32(((int*)state)[0]);
+    c.h[1] = htobe32(((int*)state)[1]);
+    c.h[2] = htobe32(((int*)state)[2]);
+    c.h[3] = htobe32(((int*)state)[3]);
+    c.h[4] = htobe32(((int*)state)[4]);
+    c.h[5] = htobe32(((int*)state)[5]);
+    c.h[6] = htobe32(((int*)state)[6]);
+    c.h[7] = htobe32(((int*)state)[7]);
+  }
+
+  SHA256_Update(&c, data, length);
+  SHA256_Final(buffer, &c);
+}
+
+static void sha512_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
+{
+  uint64_t i;
+
+  SHA512_CTX c;
+  SHA512_Init(&c);
+
+  if(state)
+  {
+    for(i = 0; i < state_size; i++)
+      SHA512_Update(&c, "A", 1);
+
+      c.h[0] = htobe64(((uint64_t*)state)[0]);
+      c.h[1] = htobe64(((uint64_t*)state)[1]);
+      c.h[2] = htobe64(((uint64_t*)state)[2]);
+      c.h[3] = htobe64(((uint64_t*)state)[3]);
+      c.h[4] = htobe64(((uint64_t*)state)[4]);
+      c.h[5] = htobe64(((uint64_t*)state)[5]);
+      c.h[6] = htobe64(((uint64_t*)state)[6]);
+      c.h[7] = htobe64(((uint64_t*)state)[7]);
+  }
+
+  SHA512_Update(&c, data, length);
+  SHA512_Final(buffer, &c);
+}
+
+#ifndef DISABLE_WHIRLPOOL
+
+static void whirlpool_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
+{
+  uint64_t i;
+
+  WHIRLPOOL_CTX c;
+  WHIRLPOOL_Init(&c);
+
+  if(state)
+  {
+    for(i = 0; i < state_size; i++)
+      WHIRLPOOL_Update(&c, "A", 1);
+    memcpy(c.H.c, state, WHIRLPOOL_DIGEST_LENGTH);
+  }
+
+  WHIRLPOOL_Update(&c, data, length);
+  WHIRLPOOL_Final(buffer, &c);
+}
+
+#endif
