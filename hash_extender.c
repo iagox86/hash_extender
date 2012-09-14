@@ -34,7 +34,7 @@ typedef struct {
   uint8_t  *signature;
   uint64_t  signature_length;
 
-  BOOL      *formats;
+  char      **formats;
   uint8_t   format_count;
 
   uint64_t  secret_min;
@@ -58,17 +58,17 @@ void output_format(char *format, uint8_t *data, uint64_t data_length)
 }
 
 /* Output the data in the chosen format. */
-void output(options_t *options, char *type, uint64_t secret_length, uint8_t *new_data, uint64_t new_data_length, uint8_t *new_signature, uint64_t new_signature_length)
+void output(options_t *options, char *type, uint64_t secret_length, uint8_t *new_data, uint64_t new_data_length, uint8_t *new_signature)
 {
   if(options->quiet)
   {
-    output_format(options->out_signature_format, new_signature, new_signature_length);
+    output_format(options->out_signature_format, new_signature, hash_type_digest_size(type));
     output_format(options->out_data_format, new_data, new_data_length);
   }
   else if(options->out_table)
   {
     printf("%-9s ", type);
-    output_format(options->out_signature_format, new_signature, new_signature_length);
+    output_format(options->out_signature_format, new_signature, hash_type_digest_size(type));
     printf(" ");
     output_format(options->out_data_format, new_data, new_data_length);
     printf("\n");
@@ -80,7 +80,7 @@ void output(options_t *options, char *type, uint64_t secret_length, uint8_t *new
     printf("Secret length: %"PRId64"\n", secret_length);
 
     printf("New signature: ");
-    output_format(options->out_signature_format, new_signature, new_signature_length);
+    output_format(options->out_signature_format, new_signature, hash_type_digest_size(type));
     printf("\n");
 
     printf("New string: ");
@@ -104,31 +104,27 @@ void go(options_t *options)
     uint64_t new_length;
 
     /* Loop through the possible hashtypes. */
-    for(i = 0; hash_types[i].name; i++)
+    for(i = 0; i < options->format_count; i++)
     {
-      /* If the hashtype is enabled, ... */
-      if(options->formats[i])
-      {
-        /* Generate the new data. */
-        new_data = hash_append_data(hash_types[i], options->data, options->data_length, secret_length, options->append, options->append_length, &new_length);
+      char *format = options->formats[i];
 
-        /* Generate the signature for it.  */
-        hash_gen_signature_evil(hash_types[i], secret_length, options->data_length, options->signature, options->append, options->append_length, new_signature);
+      /* Generate the new data. */
+      new_data = hash_append_data(format, options->data, options->data_length, secret_length, options->append, options->append_length, &new_length);
 
-        /* Display the result to the user. */
-        output(options, hash_types[i].name, secret_length, new_data, new_length, new_signature, hash_types[i].digest_size);
+      /* Generate the signature for it.  */
+      hash_gen_signature_evil(format, secret_length, options->data_length, options->signature, options->append, options->append_length, new_signature);
 
-        /* Free the buffer. */
-        free(new_data);
-      }
+      /* Display the result to the user. */
+      output(options, format, secret_length, new_data, new_length, new_signature);
+
+      /* Free the buffer. */
+      free(new_data);
     }
   }
 }
 
 void usage(char *program)
 {
-  int i;
-
   printf(
     "\n"
     "--------------------------------------------------------------------------------\n"
@@ -169,15 +165,12 @@ void usage(char *program)
     "      The hash_type of the signature. This can be given multiple times if you\n"
     "      want to try multiple signatures. 'all' will base the chosen types off\n"
     "      the size of the signature and use the hash(es) that make sense.\n"
-    "      Valid types: ",
+    "      Valid types: %s\n",
     decode_formats,
     decode_formats,
-    decode_formats
+    decode_formats,
+    hash_type_list
     );
-
-  for(i = 0; hash_types[i].name; i++)
-    printf("%s%s", hash_types[i].name, hash_types[i+1].name ? ", " : "");
-  printf("\n");
 
   printf(
     "-l --secret=<length>\n"
@@ -259,7 +252,7 @@ int main(int argc, char *argv[])
   };
 
   memset(&options, 0, sizeof(options_t));
-  options.formats = (BOOL*) malloc(hash_type_count * sizeof(BOOL));
+  options.formats = (char**) malloc(hash_type_count * sizeof(char*));
 
   opterr = 0;
   while((c = getopt_long_only(argc, argv, "", long_options, &option_index)) != EOF)
@@ -308,15 +301,9 @@ int main(int argc, char *argv[])
         }
         else if(!strcmp(option_name, "format") || !strcmp(option_name, "f"))
         {
-          for(i = 0; hash_types[i].name; i++)
-          {
-            if(!strcmp(optarg, hash_types[i].name))
-            {
-              options.formats[i] = 1;
-              options.format_count++;
-              break;
-            }
-          }
+          if(!hash_type_exists(optarg))
+            error(argv[0], "Invalid hash type passed to --format");
+          options.formats[options.format_count++] = optarg;
         }
         else if(!strcmp(option_name, "secret"))
         {
@@ -452,12 +439,11 @@ int main(int argc, char *argv[])
   if(options.format_count == 0)
   {
     /* If no signature was given, figure out which, if any, make sense. */
-    for(i = 0; hash_types[i].name; i++)
+    for(i = 0; hash_type_array[i]; i++)
     {
-      if(options.signature_length == hash_types[i].digest_size)
+      if(options.signature_length == hash_type_digest_size(hash_type_array[i]))
       {
-        options.formats[i] = 1;
-        options.format_count++;
+        options.formats[options.format_count++] = hash_type_array[i];
       }
     }
   }
@@ -467,11 +453,12 @@ int main(int argc, char *argv[])
   }
 
   /* Sanity check the length of the signature. */
-  for(i = 0; hash_types[i].name; i++)
+  for(i = 0; i < options.format_count; i++)
   {
-    if(options.formats[i] && options.signature_length != hash_types[i].digest_size)
+    uint64_t digest_size = hash_type_digest_size(options.formats[i]);
+    if(options.signature_length != digest_size)
     {
-      fprintf(stderr, "%s's signature needs to be %"PRId64" bytes", hash_types[i].name, hash_types[i].digest_size);
+      fprintf(stderr, "%s's signature needs to be %"PRId64" bytes", options.formats[i], digest_size);
       exit(1);
     }
   }

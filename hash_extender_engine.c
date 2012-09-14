@@ -38,6 +38,21 @@ static void sha512_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t
 static void whirlpool_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
 #endif
 
+/* The hashing function that each implementation needs to impelement. */
+typedef void(hash_t)(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
+
+/* Define a list of structs. */
+typedef struct
+{
+  char                 *name;
+  uint64_t              digest_size;
+  BOOL                  little_endian;
+  uint64_t              block_size;
+  uint64_t              length_size;
+
+  hash_t               *hash;
+} hash_type_t;
+
 hash_type_t hash_types[] = {
   {"md4",       MD4_DIGEST_LENGTH,       TRUE,  64,  8,  md4_hash},
   {"md5",       MD5_DIGEST_LENGTH,       TRUE,  64,  8,  md5_hash},
@@ -52,14 +67,61 @@ hash_type_t hash_types[] = {
   {0, 0, 0, 0, 0}
 };
 
+char *hash_type_list = 
+  "md4"
+  ", md5"
+  ", ripemd160"
+  ", sha"
+  ", sha1"
+  ", sha256"
+  ", sha512"
+#ifndef DISABLE_WHIRLPOOL
+  ", whirlpool"
+#endif
+  ;
+
+char *hash_type_array[] = {
+  "md4",
+  "md5",
+  "ripemd160",
+  "sha",
+  "sha1",
+  "sha256",
+  "sha512",
+#ifndef DISABLE_WHIRLPOOL
+  "whirlpool",
+#endif
+  0
+};
+
 uint64_t hash_type_count = (sizeof(hash_types) / sizeof(hash_type_t));
 
-/* Note: this only supports data with a 4-byte size (4.2 billion bits). */
-uint8_t *hash_append_data(hash_type_t hash_type, uint8_t *data, uint64_t data_length, uint64_t secret_length, uint8_t *append, uint64_t append_length, uint64_t *new_length)
+static hash_type_t *get_hash_type(char *name)
 {
+  int i;
+  for(i = 0; hash_types[i].name; i++)
+    if(!strcmp(hash_types[i].name, name))
+      return &hash_types[i];
+  return NULL;
+}
+
+BOOL hash_type_exists(char *hash_type_name)
+{
+  return get_hash_type(hash_type_name) != NULL;
+}
+
+uint64_t hash_type_digest_size(char *hash_type_name)
+{
+  return get_hash_type(hash_type_name)->digest_size;
+}
+
+/* Note: this only supports data with a 4-byte size (4.2 billion bits). */
+uint8_t *hash_append_data(char *hash_type_name, uint8_t *data, uint64_t data_length, uint64_t secret_length, uint8_t *append, uint64_t append_length, uint64_t *new_length)
+{
+  hash_type_t *hash_type = get_hash_type(hash_type_name);
   /* Allocate memory for the new buffer (enough room for buffer + two full block (finish the current block, entire next block) + the data) */
   /* Note that this can overflow, so this can't be used in security-sensitive applications! */
-  uint8_t *result = malloc(data_length + append_length + (2 * hash_type.block_size));
+  uint8_t *result = malloc(data_length + append_length + (2 * hash_type->block_size));
   uint64_t bit_length;
 
   /* Start with the current buffer and length. */
@@ -67,7 +129,7 @@ uint8_t *hash_append_data(hash_type_t hash_type, uint8_t *data, uint64_t data_le
   *new_length = data_length;
 
   result[(*new_length)++] = 0x80;
-  while(((*new_length + secret_length) % hash_type.block_size) != (hash_type.block_size - hash_type.length_size))
+  while(((*new_length + secret_length) % hash_type->block_size) != (hash_type->block_size - hash_type->length_size))
     result[(*new_length)++] = 0x00;
 
   /* Convert the original length to bits so we can append it. */
@@ -75,12 +137,12 @@ uint8_t *hash_append_data(hash_type_t hash_type, uint8_t *data, uint64_t data_le
 
   /* Get to within exactly 8 bytes of the end (since we only store 64-bits of length).
    * If we ever need sizes bigger than 64 bits, this needs to change. */
-  while(((*new_length + secret_length) % hash_type.block_size) != (hash_type.block_size - 8))
+  while(((*new_length + secret_length) % hash_type->block_size) != (hash_type->block_size - 8))
     result[(*new_length)++] = 0x00;
 
   /* Set the last 8 bytes of result to the new length with the appropriate
    * endianness. */
-  if(hash_type.little_endian)
+  if(hash_type->little_endian)
   {
     result[(*new_length)++] = (bit_length >>  0) & 0x000000FF;
     result[(*new_length)++] = (bit_length >>  8) & 0x000000FF;
@@ -110,93 +172,98 @@ uint8_t *hash_append_data(hash_type_t hash_type, uint8_t *data, uint64_t data_le
   return result;
 }
 
-void hash_gen_signature(hash_type_t hash_type, uint8_t *secret, uint64_t secret_length, uint8_t *data, uint64_t data_length, uint8_t *signature)
+void hash_gen_signature(char *hash_type_name, uint8_t *secret, uint64_t secret_length, uint8_t *data, uint64_t data_length, uint8_t *signature)
 {
   uint8_t *buffer;
   uint64_t buffer_size;
+  hash_type_t *hash_type = get_hash_type(hash_type_name);
 
   buffer_t *b = buffer_create(BO_HOST);
   buffer_add_bytes(b, secret, secret_length);
   buffer_add_bytes(b, data, data_length);
   buffer = buffer_create_string_and_destroy(b, &buffer_size);
 
-  hash_type.hash(buffer, buffer_size, signature, NULL, 0);
+  hash_type->hash(buffer, buffer_size, signature, NULL, 0);
   free(buffer);
 }
 
-void hash_gen_signature_evil(hash_type_t hash_type, uint64_t secret_length, uint64_t data_length, uint8_t original_signature[], uint8_t *append, uint64_t append_length, uint8_t *new_signature)
+void hash_gen_signature_evil(char *hash_type_name, uint64_t secret_length, uint64_t data_length, uint8_t original_signature[], uint8_t *append, uint64_t append_length, uint8_t *new_signature)
 {
   uint64_t original_data_length;
+  hash_type_t *hash_type = get_hash_type(hash_type_name);
 
-  original_data_length = (((secret_length + data_length + hash_type.length_size) / hash_type.block_size) * hash_type.block_size) + hash_type.block_size;
-  hash_type.hash(append, append_length, new_signature, original_signature, original_data_length);
+  original_data_length = (((secret_length + data_length + hash_type->length_size) / hash_type->block_size) * hash_type->block_size) + hash_type->block_size;
+  hash_type->hash(append, append_length, new_signature, original_signature, original_data_length);
 }
 
-static int hash_test_validate(hash_type_t hash_type, uint8_t *secret, uint64_t secret_length, uint8_t *data, uint64_t data_length, uint8_t *signature)
+static int hash_test_validate(char *hash_type_name, uint8_t *secret, uint64_t secret_length, uint8_t *data, uint64_t data_length, uint8_t *signature)
 {
-  unsigned char result[hash_type.digest_size];
+  hash_type_t *hash_type = get_hash_type(hash_type_name);
+  unsigned char result[hash_type->digest_size];
 
-  hash_gen_signature(hash_type, secret, secret_length, data, data_length, result);
+  hash_gen_signature(hash_type_name, secret, secret_length, data, data_length, result);
 
-  return !memcmp(signature, result, hash_type.digest_size);
+  return !memcmp(signature, result, hash_type->digest_size);
 }
 
-static void hash_test_extension(hash_type_t hash_type)
+static void hash_test_extension(char *hash_type_name)
 {
   uint8_t *secret    = (uint8_t*)"SECRET";
   uint8_t *data      = (uint8_t*)"DATA";
   uint8_t *append    = (uint8_t*)"APPEND";
   uint8_t *new_data;
   uint64_t  new_length;
+  hash_type_t *hash_type = get_hash_type(hash_type_name);
 
-  uint8_t original_signature[hash_type.digest_size];
-  uint8_t new_signature[hash_type.digest_size];
+  uint8_t original_signature[hash_type->digest_size];
+  uint8_t new_signature[hash_type->digest_size];
 
-  printf("%s: Testing some basic hash data...\n", hash_type.name);
+  printf("%s: Testing some basic hash data...\n", hash_type_name);
 
   /* Get the original signature. */
-  hash_gen_signature(hash_type, secret, strlen((char*)secret), data, strlen((char*)data), original_signature);
+  hash_gen_signature(hash_type_name, secret, strlen((char*)secret), data, strlen((char*)data), original_signature);
 
   /* Create the new data. */
-  new_data = hash_append_data(hash_type, data, strlen((char*)data), strlen((char*)secret), append, strlen((char*)append), &new_length);
+  new_data = hash_append_data(hash_type_name, data, strlen((char*)data), strlen((char*)secret), append, strlen((char*)append), &new_length);
 
   /* Generate an evil signature with the data appended. */
-  hash_gen_signature_evil(hash_type, strlen((char*)secret), strlen((char*)data), original_signature, append, strlen((char*)append), new_signature);
+  hash_gen_signature_evil(hash_type_name, strlen((char*)secret), strlen((char*)data), original_signature, append, strlen((char*)append), new_signature);
 
   /* Check the new signature. */
-  test_check_boolean(" basic extension", hash_test_validate(hash_type, secret, strlen((char*)secret), new_data, new_length, new_signature));
+  test_check_boolean(" basic extension", hash_test_validate(hash_type_name, secret, strlen((char*)secret), new_data, new_length, new_signature));
 
   free(new_data);
 }
 
-static void hash_test_lengths(hash_type_t hash_type)
+static void hash_test_lengths(char *hash_type_name)
 {
   uint8_t *secret    = (uint8_t*)"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
   uint8_t *data      = (uint8_t*)"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
   uint8_t *append    = (uint8_t*)"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC";
   uint8_t *new_data;
   uint64_t  new_length;
+  hash_type_t *hash_type = get_hash_type(hash_type_name);
 
-  uint8_t original_signature[hash_type.digest_size];
-  uint8_t new_signature[hash_type.digest_size];
+  uint8_t original_signature[hash_type->digest_size];
+  uint8_t new_signature[hash_type->digest_size];
 
   uint64_t i;
 
-  printf("%s: Testing hash data of various lengths...\n", hash_type.name);
+  printf("%s: Testing hash data of various lengths...\n", hash_type->name);
 
   for(i = 0; i < 993; i++)
   {
     /* Get the original signature. */
-    hash_gen_signature(hash_type, secret, i, data, strlen((char*)data), original_signature);
+    hash_gen_signature(hash_type_name, secret, i, data, strlen((char*)data), original_signature);
 
     /* Create the new data. */
-    new_data = hash_append_data(hash_type, data, strlen((char*)data), i, append, strlen((char*)append), &new_length);
+    new_data = hash_append_data(hash_type_name, data, strlen((char*)data), i, append, strlen((char*)append), &new_length);
 
     /* Generate an evil signature with the data appended. */
-    hash_gen_signature_evil(hash_type, i, strlen((char*)data), original_signature, append, strlen((char*)append), new_signature);
+    hash_gen_signature_evil(hash_type_name, i, strlen((char*)data), original_signature, append, strlen((char*)append), new_signature);
 
     /* Check the new signature. */
-    test_check_boolean(" different lengths (secret)", hash_test_validate(hash_type, secret, i, new_data, new_length, new_signature));
+    test_check_boolean(" different lengths (secret)", hash_test_validate(hash_type_name, secret, i, new_data, new_length, new_signature));
 
     /* Free the memory we allocatd. */
     free(new_data);
@@ -205,16 +272,16 @@ static void hash_test_lengths(hash_type_t hash_type)
   for(i = 0; i < 993; i++)
   {
     /* Get the original signature. */
-    hash_gen_signature(hash_type, secret, strlen((char*)secret), data, i, original_signature);
+    hash_gen_signature(hash_type_name, secret, strlen((char*)secret), data, i, original_signature);
 
     /* Create the new data. */
-    new_data = hash_append_data(hash_type, data, i, strlen((char*)secret), append, strlen((char*)append), &new_length);
+    new_data = hash_append_data(hash_type_name, data, i, strlen((char*)secret), append, strlen((char*)append), &new_length);
 
     /* Generate an evil signature with the data appended. */
-    hash_gen_signature_evil(hash_type, strlen((char*)secret), i, original_signature, append, strlen((char*)append), new_signature);
+    hash_gen_signature_evil(hash_type_name, strlen((char*)secret), i, original_signature, append, strlen((char*)append), new_signature);
 
     /* Check the new signature. */
-    test_check_boolean(" different lengths (data)", hash_test_validate(hash_type, secret, strlen((char*)secret), new_data, new_length, new_signature));
+    test_check_boolean(" different lengths (data)", hash_test_validate(hash_type_name, secret, strlen((char*)secret), new_data, new_length, new_signature));
 
     /* Free the memory we allocatd. */
     free(new_data);
@@ -223,26 +290,26 @@ static void hash_test_lengths(hash_type_t hash_type)
   for(i = 0; i < 993; i++)
   {
     /* Get the original signature. */
-    hash_gen_signature(hash_type, secret, strlen((char*)secret), data, strlen((char*)data), original_signature);
+    hash_gen_signature(hash_type_name, secret, strlen((char*)secret), data, strlen((char*)data), original_signature);
 
     /* Create the new data. */
-    new_data = hash_append_data(hash_type, data, strlen((char*)data), strlen((char*)secret), append, i, &new_length);
+    new_data = hash_append_data(hash_type_name, data, strlen((char*)data), strlen((char*)secret), append, i, &new_length);
 
     /* Generate an evil signature with the data appended. */
-    hash_gen_signature_evil(hash_type, strlen((char*)secret), strlen((char*)data), original_signature, append, i, new_signature);
+    hash_gen_signature_evil(hash_type_name, strlen((char*)secret), strlen((char*)data), original_signature, append, i, new_signature);
 
     /* Check the new signature. */
-    test_check_boolean(" different lengths (secret)", hash_test_validate(hash_type, secret, strlen((char*)secret), new_data, new_length, new_signature));
+    test_check_boolean(" different lengths (secret)", hash_test_validate(hash_type_name, secret, strlen((char*)secret), new_data, new_length, new_signature));
 
     /* Free the memory we allocatd. */
     free(new_data);
   }
 }
 
-void hash_test(hash_type_t hash_type)
+void hash_test(char *hash_type_name)
 {
-  hash_test_extension(hash_type);
-  hash_test_lengths(hash_type);
+  hash_test_extension(hash_type_name);
+  hash_test_lengths(hash_type_name);
 }
 
 static void md4_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
