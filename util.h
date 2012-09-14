@@ -38,8 +38,6 @@ void print_hex(unsigned char *data, unsigned int length);
 void print_hex_fancy(uint8_t *data, uint64_t length);
 void die(char *msg);
 void die_MEM();
-uint8_t *format_to_raw(char *str, format_t format, uint64_t *out_length);
-void output_format(format_t format, uint8_t *data, uint64_t data_length);
 
 uint8_t *read_file(char *filename, uint64_t *out_length);
 

@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include "buffer.h"
+#include "formats.h"
 #include "util.h"
 
 #include "hash_extender_engine.h"
@@ -17,19 +18,19 @@
 /* Define the various options we can set. */
 typedef struct {
   char     *data_raw;
-  format_t  data_format;
+  format_t_2  *data_format;
   uint8_t  *data;
   uint64_t  data_length;
 
   char     *append_raw;
-  format_t  append_format;
+  format_t_2  *append_format;
   uint8_t  *append;
   uint64_t  append_length;
 
   char     *filename;
 
   char     *signature_raw;
-  format_t  signature_format;
+  format_t_2  *signature_format;
   uint8_t  *signature;
   uint64_t  signature_length;
 
@@ -40,11 +41,21 @@ typedef struct {
   uint64_t  secret_max;
 
   uint8_t   out_table;
-  format_t  out_data;
-  format_t  out_signature;
+  format_t_2  *out_data;
+  format_t_2  *out_signature;
 
   uint8_t   quiet;
 } options_t;
+
+void output_format(format_t_2 *format, uint8_t *data, uint64_t data_length)
+{
+  uint8_t *out_data;
+  uint64_t out_length;
+
+  out_data = format->encoder(data, data_length, &out_length);
+  fwrite(out_data, 1, out_length, stdout);
+  free(out_data);
+}
 
 /* Output the data in the chosen format. */
 void output(options_t *options, char *type, uint64_t secret_length, uint8_t *new_data, uint64_t new_data_length, uint8_t *new_signature, uint64_t new_signature_length)
@@ -172,10 +183,24 @@ void usage(char *program)
     "OUTPUT OPTIONS\n"
     "--table\n"
     "      Output the string in a table format.\n"
-    "--out-data-format=<raw|html|html-pure|hex|cstr|cstr-pure|none>\n"
+    "--out-data-format=<format>\n"
     "      Output data format.\n"
+    "      Valid formats: "
+    );
+  for(i = 0; formats[i].name; i++)
+    printf("%s%s", formats[i].name, formats[i+1].name ? ", " : "");
+  printf("\n");
+
+  printf(
     "--out-signature-format=<raw|htmlhtml-pure||hex|cstr|cstr-pure|none>\n"
     "      Output signature format.\n"
+    "      Valid formats: "
+    );
+  for(i = 0; formats[i].name; i++)
+    printf("%s%s", formats[i].name, formats[i+1].name ? ", " : "");
+  printf("\n");
+
+  printf(
     "\n"
     "OTHER OPTIONS\n"
     "-h --help \n"
@@ -254,15 +279,14 @@ int main(int argc, char *argv[])
         }
         else if(!strcmp(option_name, "data-format"))
         {
-          if(!strcmp(optarg, "raw"))
-            options.data_format = FORMAT_RAW;
-          else if(!strcmp(optarg, "hex"))
-            options.data_format = FORMAT_HEX;
-          else if(!strcmp(optarg, "html"))
-            options.data_format = FORMAT_HTML;
-          else if(!strcmp(optarg, "cstr"))
-            options.data_format = FORMAT_CSTR;
-          else
+          options.data_format = NULL;
+          for(i = 0; formats[i].name; i++)
+          {
+            if(!strcmp(optarg, formats[i].name))
+              options.data_format = &formats[i];
+          }
+
+          if(!options.data_format)
             error(argv[0], "Unknown option passed to --data-format");
         }
         else if(!strcmp(option_name, "file"))
@@ -275,15 +299,14 @@ int main(int argc, char *argv[])
         }
         else if(!strcmp(option_name, "append-format"))
         {
-          if(!strcmp(optarg, "raw"))
-            options.append_format = FORMAT_RAW;
-          else if(!strcmp(optarg, "hex"))
-            options.append_format = FORMAT_HEX;
-          else if(!strcmp(optarg, "html"))
-            options.append_format = FORMAT_HTML;
-          else if(!strcmp(optarg, "cstr"))
-            options.append_format = FORMAT_CSTR;
-          else
+          options.append_format = NULL;
+          for(i = 0; formats[i].name; i++)
+          {
+            if(!strcmp(optarg, formats[i].name))
+              options.append_format = &formats[i];
+          }
+
+          if(!options.append_format)
             error(argv[0], "Unknown option passed to --append-format");
         }
         else if(!strcmp(option_name, "signature") || !strcmp(option_name, "s"))
@@ -292,15 +315,14 @@ int main(int argc, char *argv[])
         }
         else if(!strcmp(option_name, "signature-format"))
         {
-          if(!strcmp(optarg, "raw"))
-            options.signature_format = FORMAT_RAW;
-          else if(!strcmp(optarg, "hex"))
-            options.signature_format = FORMAT_HEX;
-          else if(!strcmp(optarg, "html"))
-            options.signature_format = FORMAT_HTML;
-          else if(!strcmp(optarg, "cstr"))
-            options.signature_format = FORMAT_CSTR;
-          else
+          options.signature_format = NULL;
+          for(i = 0; formats[i].name; i++)
+          {
+            if(!strcmp(optarg, formats[i].name))
+              options.signature_format = &formats[i];
+          }
+
+          if(!options.signature_format)
             error(argv[0], "Unknown option passed to --signature-format");
         }
         else if(!strcmp(option_name, "format") || !strcmp(option_name, "f"))
@@ -340,40 +362,26 @@ int main(int argc, char *argv[])
         }
         else if(!strcmp(option_name, "out-data-format"))
         {
-          if(!strcmp(optarg, "raw"))
-            options.out_data = FORMAT_RAW;
-          else if(!strcmp(optarg, "html"))
-            options.out_data = FORMAT_HTML;
-          else if(!strcmp(optarg, "html-pure"))
-            options.out_data = FORMAT_HTML_PURE;
-          else if(!strcmp(optarg, "hex"))
-            options.out_data = FORMAT_HEX;
-          else if(!strcmp(optarg, "cstr"))
-            options.out_data = FORMAT_CSTR;
-          else if(!strcmp(optarg, "cstr-pure"))
-            options.out_data = FORMAT_CSTR_PURE;
-          else if(!strcmp(optarg, "none"))
-            options.out_data = FORMAT_NONE;
-          else
+          options.out_data = NULL;
+          for(i = 0; formats[i].name; i++)
+          {
+            if(!strcmp(optarg, formats[i].name))
+              options.out_data = &formats[i];
+          }
+
+          if(!options.out_data)
             error(argv[0], "Unknown option passed to --out-data-format");
         }
         else if(!strcmp(option_name, "out-signature-format"))
         {
-          if(!strcmp(optarg, "raw"))
-            options.out_signature = FORMAT_RAW;
-          else if(!strcmp(optarg, "html"))
-            options.out_signature = FORMAT_HTML;
-          else if(!strcmp(optarg, "html-pure"))
-            options.out_signature = FORMAT_HTML_PURE;
-          else if(!strcmp(optarg, "hex"))
-            options.out_signature = FORMAT_HEX;
-          else if(!strcmp(optarg, "cstr"))
-            options.out_signature = FORMAT_CSTR;
-          else if(!strcmp(optarg, "cstr-pure"))
-            options.out_signature = FORMAT_CSTR_PURE;
-          else if(!strcmp(optarg, "none"))
-            options.out_signature = FORMAT_NONE;
-          else
+          options.out_signature = NULL;
+          for(i = 0; formats[i].name; i++)
+          {
+            if(!strcmp(optarg, formats[i].name))
+              options.out_signature = &formats[i];
+          }
+
+          if(!options.out_signature)
             error(argv[0], "Unknown option passed to --out-signature-format");
         }
         else if(!strcmp(option_name, "help") || !strcmp(option_name, "h"))
@@ -451,23 +459,23 @@ int main(int argc, char *argv[])
     error(argv[0], "--secret-min and --secret-max can't be used separately, please specify both.");
   }
 
-  if(options.data_format == 0)      options.data_format      = FORMAT_RAW;
-  if(options.append_format == 0)    options.append_format    = FORMAT_RAW;
-  if(options.signature_format == 0) options.signature_format = FORMAT_HEX;
-  if(options.out_data == 0)         options.out_data         = FORMAT_HEX;
-  if(options.out_signature == 0)    options.out_signature    = FORMAT_HEX;
+  if(!options.data_format)      options.data_format      = &formats[1];
+  if(!options.append_format)    options.append_format    = &formats[1];
+  if(!options.signature_format) options.signature_format = &formats[2];
+  if(!options.out_data)         options.out_data         = &formats[2];
+  if(!options.out_signature)    options.out_signature    = &formats[2];
 
   /* Convert the data appropriately. */
   if(options.data_raw)
-    options.data = format_to_raw(options.data_raw, options.data_format, &options.data_length);
+    options.data = options.data_format->decoder((uint8_t*)options.data_raw, strlen(options.data_raw), &options.data_length);
   else
     options.data = read_file(options.filename, &options.data_length);
 
   /* Convert the appended data. */
-  options.append = format_to_raw(options.append_raw, options.append_format, &options.append_length);
+  options.append = options.append_format->decoder((uint8_t*)options.append_raw, strlen(options.append_raw), &options.append_length);
 
   /* Convert the signature. */
-  options.signature = format_to_raw(options.signature_raw, options.signature_format, &options.signature_length);
+  options.signature = options.signature_format->decoder((uint8_t*)options.signature_raw, strlen(options.signature_raw), &options.signature_length);
 
   /* If no formats were given, try to guess it. */
   if(options.format_count == 0)
