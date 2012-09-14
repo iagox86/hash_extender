@@ -192,7 +192,7 @@ void usage(char *program)
   printf("\n");
 
   printf(
-    "--out-signature-format=<raw|htmlhtml-pure||hex|cstr|cstr-pure|none>\n"
+    "--out-signature-format=<format>\n"
     "      Output signature format.\n"
     "      Valid formats: "
     );
@@ -279,13 +279,7 @@ int main(int argc, char *argv[])
         }
         else if(!strcmp(option_name, "data-format"))
         {
-          options.data_format = NULL;
-          for(i = 0; formats[i].name; i++)
-          {
-            if(!strcmp(optarg, formats[i].name))
-              options.data_format = &formats[i];
-          }
-
+          options.data_format = format_get_by_name(optarg);
           if(!options.data_format)
             error(argv[0], "Unknown option passed to --data-format");
         }
@@ -299,13 +293,7 @@ int main(int argc, char *argv[])
         }
         else if(!strcmp(option_name, "append-format"))
         {
-          options.append_format = NULL;
-          for(i = 0; formats[i].name; i++)
-          {
-            if(!strcmp(optarg, formats[i].name))
-              options.append_format = &formats[i];
-          }
-
+          options.append_format = format_get_by_name(optarg);
           if(!options.append_format)
             error(argv[0], "Unknown option passed to --append-format");
         }
@@ -315,13 +303,7 @@ int main(int argc, char *argv[])
         }
         else if(!strcmp(option_name, "signature-format"))
         {
-          options.signature_format = NULL;
-          for(i = 0; formats[i].name; i++)
-          {
-            if(!strcmp(optarg, formats[i].name))
-              options.signature_format = &formats[i];
-          }
-
+          options.signature_format = format_get_by_name(optarg);
           if(!options.signature_format)
             error(argv[0], "Unknown option passed to --signature-format");
         }
@@ -362,25 +344,13 @@ int main(int argc, char *argv[])
         }
         else if(!strcmp(option_name, "out-data-format"))
         {
-          options.out_data = NULL;
-          for(i = 0; formats[i].name; i++)
-          {
-            if(!strcmp(optarg, formats[i].name))
-              options.out_data = &formats[i];
-          }
-
+          options.out_data = format_get_by_name(optarg);
           if(!options.out_data)
             error(argv[0], "Unknown option passed to --out-data-format");
         }
         else if(!strcmp(option_name, "out-signature-format"))
         {
-          options.out_signature = NULL;
-          for(i = 0; formats[i].name; i++)
-          {
-            if(!strcmp(optarg, formats[i].name))
-              options.out_signature = &formats[i];
-          }
-
+          options.out_signature = format_get_by_name(optarg);
           if(!options.out_signature)
             error(argv[0], "Unknown option passed to --out-signature-format");
         }
@@ -459,11 +429,11 @@ int main(int argc, char *argv[])
     error(argv[0], "--secret-min and --secret-max can't be used separately, please specify both.");
   }
 
-  if(!options.data_format)      options.data_format      = &formats[1];
-  if(!options.append_format)    options.append_format    = &formats[1];
-  if(!options.signature_format) options.signature_format = &formats[2];
-  if(!options.out_data)         options.out_data         = &formats[2];
-  if(!options.out_signature)    options.out_signature    = &formats[2];
+  if(!options.data_format)      options.data_format      = format_get_by_name("raw");
+  if(!options.append_format)    options.append_format    = format_get_by_name("raw");
+  if(!options.signature_format) options.signature_format = format_get_by_name("hex");
+  if(!options.out_data)         options.out_data         = format_get_by_name("hex");
+  if(!options.out_signature)    options.out_signature    = format_get_by_name("hex");
 
   /* Convert the data appropriately. */
   if(options.data_raw)
