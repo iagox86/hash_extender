@@ -4,12 +4,8 @@
 
 int main()
 {
-  int i;
-
-  for(i = 0; hash_types[i].name; i++)
-    hash_test(hash_types[i]);
-  util_test();
-
+  hash_test();
+  /* TODO: util testing. */
   test_report();
 
   return 0;

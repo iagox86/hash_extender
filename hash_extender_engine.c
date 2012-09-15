@@ -306,10 +306,15 @@ static void hash_test_lengths(char *hash_type_name)
   }
 }
 
-void hash_test(char *hash_type_name)
+void hash_test()
 {
-  hash_test_extension(hash_type_name);
-  hash_test_lengths(hash_type_name);
+  int i;
+
+  for(i = 0; hash_types[i].name; i++)
+  {
+    hash_test_extension(hash_types[i].name);
+    hash_test_lengths(hash_types[i].name);
+  }
 }
 
 static void md4_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
