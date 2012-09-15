@@ -6,7 +6,7 @@
 
 int main()
 {
-  hash_test();
+  /*hash_test(); */
   format_test();
   test_report();
 
