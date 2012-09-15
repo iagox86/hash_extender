@@ -1,11 +1,13 @@
 #include <stdio.h>
-#include "test.h"
+
+#include "formats.h"
 #include "hash_extender_engine.h"
+#include "test.h"
 
 int main()
 {
   hash_test();
-  /* TODO: util testing. */
+  format_test();
   test_report();
 
   return 0;
