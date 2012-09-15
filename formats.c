@@ -13,31 +13,31 @@
 uint8_t *encode_none(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 void     test_none();
 
-uint8_t *decode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 uint8_t *encode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length);
+uint8_t *decode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 void     test_raw();
 
-uint8_t *decode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 uint8_t *encode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length);
+uint8_t *decode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 void     test_html();
 
 uint8_t *encode_html_pure(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 void     test_html_pure();
 
-uint8_t *decode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 uint8_t *encode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length);
+uint8_t *decode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 void     test_hex();
 
-uint8_t *decode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 uint8_t *encode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length);
+uint8_t *decode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 void     test_cstr();
 
 uint8_t *encode_cstr_pure(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 void     test_cstr_pure();
 
 /* Define some types so we can stores function pointers. */
-typedef uint8_t* (func_decoder)(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 typedef uint8_t* (func_encoder)(uint8_t *data, uint64_t data_length, uint64_t *out_length);
+typedef uint8_t* (func_decoder)(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 typedef void (func_test)();
 
 typedef struct {
@@ -54,7 +54,7 @@ format_t formats[] = {
   {"html",      encode_html,      decode_html, test_html},
   {"html-pure", encode_html_pure, NULL,        test_html_pure},
   {"cstr",      encode_cstr,      decode_cstr, test_cstr},
-  {"cstr-pure", encode_cstr_pure, decode_cstr, test_cstr_pure},
+  {"cstr-pure", encode_cstr_pure, NULL,        test_cstr_pure},
   {0, 0, 0, 0}
 };
 
@@ -150,7 +150,7 @@ void test_none()
   }
 }
 
-uint8_t *decode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length)
+uint8_t *encode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length)
 {
   uint8_t *result = malloc(data_length);
   memcpy(result, data, data_length);
@@ -158,7 +158,7 @@ uint8_t *decode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length)
   return result;
 }
 
-uint8_t *encode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length)
+uint8_t *decode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length)
 {
   uint8_t *result = malloc(data_length);
   memcpy(result, data, data_length);
@@ -197,6 +197,32 @@ void test_raw()
   }
 }
 
+uint8_t *encode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length)
+{
+  int i;
+  buffer_t *b = buffer_create(BO_HOST);
+  char tmp[16];
+
+  for(i = 0; i < data_length; i++)
+  {
+    if(isalpha(data[i]) || isdigit(data[i]))
+    {
+      buffer_add_int8(b, data[i]);
+    }
+    else if(data[i] == ' ')
+    {
+      buffer_add_int8(b, '+');
+    }
+    else
+    {
+      sprintf(tmp, "%%%02x", data[i]);
+      buffer_add_string(b, tmp);
+    }
+  }
+
+  return buffer_create_string_and_destroy(b, out_length);
+}
+
 uint8_t *decode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length)
 {
   buffer_t *b = buffer_create(BO_HOST);
@@ -224,32 +250,6 @@ uint8_t *decode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length)
       /* If it's not %NN or +, it's just a raw number.k */
       buffer_add_int8(b, data[i]);
       i++;
-    }
-  }
-
-  return buffer_create_string_and_destroy(b, out_length);
-}
-
-uint8_t *encode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length)
-{
-  int i;
-  buffer_t *b = buffer_create(BO_HOST);
-  char tmp[16];
-
-  for(i = 0; i < data_length; i++)
-  {
-    if(isalpha(data[i]) || isdigit(data[i]))
-    {
-      buffer_add_int8(b, data[i]);
-    }
-    else if(data[i] == ' ')
-    {
-      buffer_add_int8(b, '+');
-    }
-    else
-    {
-      sprintf(tmp, "%%%02x", data[i]);
-      buffer_add_string(b, tmp);
     }
   }
 
@@ -335,6 +335,21 @@ void test_html_pure()
   }
 }
 
+uint8_t *encode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length)
+{
+  int i;
+  buffer_t *b = buffer_create(BO_HOST);
+  char tmp[16];
+
+  for(i = 0; i < data_length; i++)
+  {
+    sprintf(tmp, "%02x", data[i]);
+    buffer_add_string(b, tmp);
+  }
+
+  return buffer_create_string_and_destroy(b, out_length);
+}
+
 uint8_t *decode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length)
 {
   buffer_t *b = buffer_create(BO_HOST);
@@ -347,21 +362,6 @@ uint8_t *decode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length)
 
     /* We consumed three digits here. */
     i += 2;
-  }
-
-  return buffer_create_string_and_destroy(b, out_length);
-}
-
-uint8_t *encode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length)
-{
-  int i;
-  buffer_t *b = buffer_create(BO_HOST);
-  char tmp[16];
-
-  for(i = 0; i < data_length; i++)
-  {
-    sprintf(tmp, "%02x", data[i]);
-    buffer_add_string(b, tmp);
   }
 
   return buffer_create_string_and_destroy(b, out_length);
@@ -396,6 +396,28 @@ void test_hex()
     test_check_memory("decode_hex", expected_data, expected_length, decoded_data, decoded_length);
     free(decoded_data);
   }
+}
+
+uint8_t *encode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length)
+{
+  int i;
+  buffer_t *b = buffer_create(BO_HOST);
+  char tmp[16];
+
+  for(i = 0; i < data_length; i++)
+  {
+    if(isalpha(data[i]) || isdigit(data[i]))
+    {
+      buffer_add_int8(b, data[i]);
+    }
+    else
+    {
+      sprintf(tmp, "\\x%02x", data[i]);
+      buffer_add_string(b, tmp);
+    }
+  }
+
+  return buffer_create_string_and_destroy(b, out_length);
 }
 
 uint8_t *decode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length)
@@ -475,28 +497,6 @@ uint8_t *decode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length)
   return buffer_create_string_and_destroy(b, out_length);
 }
 
-uint8_t *encode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length)
-{
-  int i;
-  buffer_t *b = buffer_create(BO_HOST);
-  char tmp[16];
-
-  for(i = 0; i < data_length; i++)
-  {
-    if(isalpha(data[i]) || isdigit(data[i]))
-    {
-      buffer_add_int8(b, data[i]);
-    }
-    else
-    {
-      sprintf(tmp, "\\x%02x", data[i]);
-      buffer_add_string(b, tmp);
-    }
-  }
-
-  return buffer_create_string_and_destroy(b, out_length);
-}
-
 void test_cstr()
 {
   int       i;
@@ -537,21 +537,6 @@ void test_cstr()
   }
 }
 
-uint8_t *encode_cstr_pure(uint8_t *data, uint64_t data_length, uint64_t *out_length)
-{
-  int i;
-  buffer_t *b = buffer_create(BO_HOST);
-  char tmp[16];
-
-  for(i = 0; i < data_length; i++)
-  {
-    sprintf(tmp, "\\x%02x", data[i]);
-    buffer_add_string(b, tmp);
-  }
-
-  return buffer_create_string_and_destroy(b, out_length);
-}
-
 void test_cstr_pure()
 {
   int       i;
@@ -572,7 +557,20 @@ void test_cstr_pure()
   }
 }
 
+uint8_t *encode_cstr_pure(uint8_t *data, uint64_t data_length, uint64_t *out_length)
+{
+  int i;
+  buffer_t *b = buffer_create(BO_HOST);
+  char tmp[16];
 
+  for(i = 0; i < data_length; i++)
+  {
+    sprintf(tmp, "\\x%02x", data[i]);
+    buffer_add_string(b, tmp);
+  }
+
+  return buffer_create_string_and_destroy(b, out_length);
+}
 
 void format_test()
 {
