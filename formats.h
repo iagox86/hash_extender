@@ -12,4 +12,3 @@ uint8_t *format_encode(char *format_name, uint8_t *data, uint64_t data_length, u
 uint8_t *format_decode(char *format_name, uint8_t *data, uint64_t data_length, uint64_t *out_length);
 
 void format_test();
-

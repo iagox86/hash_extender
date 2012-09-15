@@ -53,7 +53,7 @@ typedef struct
   hash_t               *hash;
 } hash_type_t;
 
-hash_type_t hash_types[] = {
+static hash_type_t hash_types[] = {
   {"md4",       MD4_DIGEST_LENGTH,       TRUE,  64,  8,  md4_hash},
   {"md5",       MD5_DIGEST_LENGTH,       TRUE,  64,  8,  md5_hash},
   {"ripemd160", RIPEMD160_DIGEST_LENGTH, TRUE,  64,  8,  ripemd160_hash},
@@ -67,7 +67,7 @@ hash_type_t hash_types[] = {
   {0, 0, 0, 0, 0}
 };
 
-char *hash_type_list = 
+const char *hash_type_list = 
   "md4"
   ", md5"
   ", ripemd160"
@@ -80,7 +80,7 @@ char *hash_type_list =
 #endif
   ;
 
-char *hash_type_array[] = {
+const char *hash_type_array[] = {
   "md4",
   "md5",
   "ripemd160",
@@ -94,7 +94,7 @@ char *hash_type_array[] = {
   0
 };
 
-uint64_t hash_type_count = (sizeof(hash_types) / sizeof(hash_type_t));
+const uint64_t hash_type_count = (sizeof(hash_types) / sizeof(hash_type_t));
 
 static hash_type_t *get_hash_type(char *name)
 {

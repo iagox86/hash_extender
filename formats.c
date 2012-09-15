@@ -10,30 +10,30 @@
 
 #include "formats.h"
 
-uint8_t *encode_none(uint8_t *data, uint64_t data_length, uint64_t *out_length);
-void     test_none();
+static uint8_t *encode_none(uint8_t *data, uint64_t data_length, uint64_t *out_length);
+static void     test_none();
 
-uint8_t *encode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length);
-uint8_t *decode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length);
-void     test_raw();
+static uint8_t *encode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length);
+static uint8_t *decode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length);
+static void     test_raw();
 
-uint8_t *encode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length);
-uint8_t *decode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length);
-void     test_html();
+static uint8_t *encode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length);
+static uint8_t *decode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length);
+static void     test_html();
 
-uint8_t *encode_html_pure(uint8_t *data, uint64_t data_length, uint64_t *out_length);
-void     test_html_pure();
+static uint8_t *encode_html_pure(uint8_t *data, uint64_t data_length, uint64_t *out_length);
+static void     test_html_pure();
 
-uint8_t *encode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length);
-uint8_t *decode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length);
-void     test_hex();
+static uint8_t *encode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length);
+static uint8_t *decode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length);
+static void     test_hex();
 
-uint8_t *encode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length);
-uint8_t *decode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length);
-void     test_cstr();
+static uint8_t *encode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length);
+static uint8_t *decode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length);
+static void     test_cstr();
 
-uint8_t *encode_cstr_pure(uint8_t *data, uint64_t data_length, uint64_t *out_length);
-void     test_cstr_pure();
+static uint8_t *encode_cstr_pure(uint8_t *data, uint64_t data_length, uint64_t *out_length);
+static void     test_cstr_pure();
 
 /* Define some types so we can stores function pointers. */
 typedef uint8_t* (func_encoder)(uint8_t *data, uint64_t data_length, uint64_t *out_length);
@@ -47,7 +47,7 @@ typedef struct {
   func_test *tester;
 } format_t;
 
-format_t formats[] = {
+static format_t formats[] = {
   {"none",      encode_none,      NULL,        test_none},
   {"raw",       encode_raw,       decode_raw,  test_raw},
   {"hex",       encode_hex,       decode_hex,  test_hex},
@@ -71,7 +71,6 @@ static format_t *format_get_by_name(char *name)
   }
   return NULL;
 }
-
 
 BOOL format_exists(char *format_name)
 {
@@ -123,13 +122,13 @@ static void test_hex_to_int()
   }
 }
 
-uint8_t *encode_none(uint8_t *data, uint64_t data_length, uint64_t *out_length)
+static uint8_t *encode_none(uint8_t *data, uint64_t data_length, uint64_t *out_length)
 {
   *out_length = 0;
   return malloc(0);
 }
 
-void test_none()
+static void test_none()
 {
   int      i;
   char     raw_data[32];
@@ -150,7 +149,7 @@ void test_none()
   }
 }
 
-uint8_t *encode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length)
+static uint8_t *encode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length)
 {
   uint8_t *result = malloc(data_length);
   memcpy(result, data, data_length);
@@ -158,7 +157,7 @@ uint8_t *encode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length)
   return result;
 }
 
-uint8_t *decode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length)
+static uint8_t *decode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length)
 {
   uint8_t *result = malloc(data_length);
   memcpy(result, data, data_length);
@@ -166,7 +165,7 @@ uint8_t *decode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length)
   return result;
 }
 
-void test_raw()
+static void test_raw()
 {
   int       i;
   char      raw_data[32];
@@ -197,7 +196,7 @@ void test_raw()
   }
 }
 
-uint8_t *encode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length)
+static uint8_t *encode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length)
 {
   int i;
   buffer_t *b = buffer_create(BO_HOST);
@@ -223,7 +222,7 @@ uint8_t *encode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length)
   return buffer_create_string_and_destroy(b, out_length);
 }
 
-uint8_t *decode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length)
+static uint8_t *decode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length)
 {
   buffer_t *b = buffer_create(BO_HOST);
   uint64_t i = 0;
@@ -256,7 +255,7 @@ uint8_t *decode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length)
   return buffer_create_string_and_destroy(b, out_length);
 }
 
-void test_html()
+static void test_html()
 {
   int       i;
   char      raw_data[32];
@@ -300,7 +299,7 @@ void test_html()
   }
 }
 
-uint8_t *encode_html_pure(uint8_t *data, uint64_t data_length, uint64_t *out_length)
+static uint8_t *encode_html_pure(uint8_t *data, uint64_t data_length, uint64_t *out_length)
 {
   int i;
   buffer_t *b = buffer_create(BO_HOST);
@@ -315,7 +314,7 @@ uint8_t *encode_html_pure(uint8_t *data, uint64_t data_length, uint64_t *out_len
   return buffer_create_string_and_destroy(b, out_length);
 }
 
-void test_html_pure()
+static void test_html_pure()
 {
   int       i;
   char      raw_data[32];
@@ -335,7 +334,7 @@ void test_html_pure()
   }
 }
 
-uint8_t *encode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length)
+static uint8_t *encode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length)
 {
   int i;
   buffer_t *b = buffer_create(BO_HOST);
@@ -350,7 +349,7 @@ uint8_t *encode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length)
   return buffer_create_string_and_destroy(b, out_length);
 }
 
-uint8_t *decode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length)
+static uint8_t *decode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length)
 {
   buffer_t *b = buffer_create(BO_HOST);
   uint64_t i = 0;
@@ -367,7 +366,7 @@ uint8_t *decode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length)
   return buffer_create_string_and_destroy(b, out_length);
 }
 
-void test_hex()
+static void test_hex()
 {
   int       i;
   char      raw_data[32];
@@ -398,7 +397,7 @@ void test_hex()
   }
 }
 
-uint8_t *encode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length)
+static uint8_t *encode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length)
 {
   int i;
   buffer_t *b = buffer_create(BO_HOST);
@@ -420,7 +419,7 @@ uint8_t *encode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length)
   return buffer_create_string_and_destroy(b, out_length);
 }
 
-uint8_t *decode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length)
+static uint8_t *decode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length)
 {
   buffer_t *b = buffer_create(BO_HOST);
   uint64_t i = 0;
@@ -497,7 +496,7 @@ uint8_t *decode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length)
   return buffer_create_string_and_destroy(b, out_length);
 }
 
-void test_cstr()
+static void test_cstr()
 {
   int       i;
   char      raw_data[32];
@@ -537,7 +536,7 @@ void test_cstr()
   }
 }
 
-void test_cstr_pure()
+static void test_cstr_pure()
 {
   int       i;
   char      raw_data[32];
@@ -557,7 +556,7 @@ void test_cstr_pure()
   }
 }
 
-uint8_t *encode_cstr_pure(uint8_t *data, uint64_t data_length, uint64_t *out_length)
+static uint8_t *encode_cstr_pure(uint8_t *data, uint64_t data_length, uint64_t *out_length)
 {
   int i;
   buffer_t *b = buffer_create(BO_HOST);
