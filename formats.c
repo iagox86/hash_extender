@@ -21,6 +21,9 @@ uint8_t *decode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 uint8_t *encode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 void     test_html();
 
+uint8_t *encode_html_pure(uint8_t *data, uint64_t data_length, uint64_t *out_length);
+void     test_html_pure();
+
 uint8_t *decode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 uint8_t *encode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 void     test_hex();
@@ -29,7 +32,8 @@ uint8_t *decode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 uint8_t *encode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 void     test_cstr();
 
-/* TODO: Pure encodings. */
+uint8_t *encode_cstr_pure(uint8_t *data, uint64_t data_length, uint64_t *out_length);
+void     test_cstr_pure();
 
 /* Define some types so we can stores function pointers. */
 typedef uint8_t* (func_decoder)(uint8_t *data, uint64_t data_length, uint64_t *out_length);
@@ -44,15 +48,17 @@ typedef struct {
 } format_t;
 
 format_t formats[] = {
-  {"none", encode_none, NULL,        test_none},
-  {"raw",  encode_raw,  decode_raw,  test_raw},
-  {"hex",  encode_hex,  decode_hex,  test_hex},
-  {"html", encode_html, decode_html, test_html},
-  {"cstr", encode_cstr, decode_cstr, test_cstr},
+  {"none",      encode_none,      NULL,        test_none},
+  {"raw",       encode_raw,       decode_raw,  test_raw},
+  {"hex",       encode_hex,       decode_hex,  test_hex},
+  {"html",      encode_html,      decode_html, test_html},
+  {"html-pure", encode_html_pure, NULL,        test_html_pure},
+  {"cstr",      encode_cstr,      decode_cstr, test_cstr},
+  {"cstr-pure", encode_cstr_pure, decode_cstr, test_cstr_pure},
   {0, 0, 0, 0}
 };
 
-const char *encode_formats = "none, raw, hex, html, cstr";
+const char *encode_formats = "none, raw, hex, html, html-pure, cstr, cstr-pure";
 const char *decode_formats = "raw, hex, html, cstr";
 
 static format_t *format_get_by_name(char *name)
@@ -294,6 +300,41 @@ void test_html()
   }
 }
 
+uint8_t *encode_html_pure(uint8_t *data, uint64_t data_length, uint64_t *out_length)
+{
+  int i;
+  buffer_t *b = buffer_create(BO_HOST);
+  char tmp[16];
+
+  for(i = 0; i < data_length; i++)
+  {
+    sprintf(tmp, "%%%02x", data[i]);
+    buffer_add_string(b, tmp);
+  }
+
+  return buffer_create_string_and_destroy(b, out_length);
+}
+
+void test_html_pure()
+{
+  int       i;
+  char      raw_data[32];
+  size_t    raw_length;
+  uint8_t  *encoded_data;
+  uint64_t  encoded_length;
+  uint8_t   expected_data[32];
+  uint64_t  expected_length;
+
+  for(i = 0; i < 256; i++)
+  {
+    raw_length = sprintf(raw_data, "%c", i);
+    encoded_data = encode_html_pure((uint8_t*)raw_data, raw_length, &encoded_length);
+    expected_length = sprintf((char*)expected_data, "%%%02x", i);
+    test_check_memory("encode_html_pure", expected_data, expected_length, encoded_data, encoded_length);
+    free(encoded_data);
+  }
+}
+
 uint8_t *decode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length)
 {
   buffer_t *b = buffer_create(BO_HOST);
@@ -496,6 +537,43 @@ void test_cstr()
   }
 }
 
+uint8_t *encode_cstr_pure(uint8_t *data, uint64_t data_length, uint64_t *out_length)
+{
+  int i;
+  buffer_t *b = buffer_create(BO_HOST);
+  char tmp[16];
+
+  for(i = 0; i < data_length; i++)
+  {
+    sprintf(tmp, "\\x%02x", data[i]);
+    buffer_add_string(b, tmp);
+  }
+
+  return buffer_create_string_and_destroy(b, out_length);
+}
+
+void test_cstr_pure()
+{
+  int       i;
+  char      raw_data[32];
+  size_t    raw_length;
+  uint8_t  *encoded_data;
+  uint64_t  encoded_length;
+  uint8_t   expected_data[32];
+  uint64_t  expected_length;
+
+  for(i = 0; i < 256; i++)
+  {
+    raw_length = sprintf(raw_data, "%c", i);
+    encoded_data = encode_cstr_pure((uint8_t*)raw_data, raw_length, &encoded_length);
+    expected_length = sprintf((char*)expected_data, "\\x%02x", i);
+    test_check_memory("encode_cstr", expected_data, expected_length, encoded_data, encoded_length);
+    free(encoded_data);
+  }
+}
+
+
+
 void format_test()
 {
   int i;
@@ -514,9 +592,5 @@ void format_test()
       fprintf(stderr, "WARNING: No test for format %s\n", formats[i].name);
     }
   }
-#if 0
-  test_format_to_raw();
-  test_output_format();
-#endif
 }
 
