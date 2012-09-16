@@ -1,3 +1,6 @@
+#ifndef __FORMATS_H__
+#define __FORMATS_H__
+
 /* formats.h By Ron Bowes Created September/2012
  *
  * See LICENSE.txt
@@ -60,3 +63,4 @@ uint8_t *format_decode(char *format_name, uint8_t *data, uint64_t data_length, u
 /* Perform self-tests. */
 void format_test();
 
+#endif

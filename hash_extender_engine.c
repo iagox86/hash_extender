@@ -141,7 +141,9 @@ uint8_t *hash_append_data(char *hash_type_name, uint8_t *data, uint64_t data_len
     result[(*new_length)++] = 0x00;
 
   /* Set the last 8 bytes of result to the new length with the appropriate
-   * endianness. */
+   * endianness. sha512 has room for 16 bytes of size, and whirlpool has room
+   * for 32 bytes, but that's not necessary. If we implement a little endian
+   * algorithm with >8 bytes of size, this will need to be fixed. */
   if(hash_type->little_endian)
   {
     result[(*new_length)++] = (bit_length >>  0) & 0x000000FF;
@@ -178,11 +180,16 @@ void hash_gen_signature(char *hash_type_name, uint8_t *secret, uint64_t secret_l
   uint64_t buffer_size;
   hash_type_t *hash_type = get_hash_type(hash_type_name);
 
+  /* Create a buffer and add the two strings to it. This is equivalent to
+   * calling the hash's _Update() function twice, but the hash_type->hash
+   * function doesn't support that type of interface so we generate the entire
+   * string first. */
   buffer_t *b = buffer_create(BO_HOST);
   buffer_add_bytes(b, secret, secret_length);
   buffer_add_bytes(b, data, data_length);
   buffer = buffer_create_string_and_destroy(b, &buffer_size);
 
+  /* Hash it using the appropriate function. */
   hash_type->hash(buffer, buffer_size, signature, NULL, 0);
   free(buffer);
 }
@@ -192,6 +199,8 @@ void hash_gen_signature_evil(char *hash_type_name, uint64_t secret_length, uint6
   uint64_t original_data_length;
   hash_type_t *hash_type = get_hash_type(hash_type_name);
 
+  /* This adds the length of the secret, the data, and the appended length
+   * field, then rounds it up to the next multiple of the blocksize. */
   original_data_length = (((secret_length + data_length + hash_type->length_size) / hash_type->block_size) * hash_type->block_size) + hash_type->block_size;
   hash_type->hash(append, append_length, new_signature, original_signature, original_data_length);
 }
@@ -201,8 +210,10 @@ static int hash_test_validate(char *hash_type_name, uint8_t *secret, uint64_t se
   hash_type_t *hash_type = get_hash_type(hash_type_name);
   unsigned char result[hash_type->digest_size];
 
+  /* Generate a signature "properly". */
   hash_gen_signature(hash_type_name, secret, secret_length, data, data_length, result);
 
+  /* Check if that signature matches the one we generated. */
   return !memcmp(signature, result, hash_type->digest_size);
 }
 
