@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -35,6 +36,9 @@ static void     test_cstr();
 static uint8_t *encode_cstr_pure(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 static void     test_cstr_pure();
 
+static uint8_t *encode_fancy(uint8_t *data, uint64_t data_length, uint64_t *out_length);
+static void     test_fancy();
+
 /* Define some types so we can stores function pointers. */
 typedef uint8_t* (func_encoder)(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 typedef uint8_t* (func_decoder)(uint8_t *data, uint64_t data_length, uint64_t *out_length);
@@ -55,10 +59,11 @@ static format_t formats[] = {
   {"html-pure", encode_html_pure, NULL,        test_html_pure},
   {"cstr",      encode_cstr,      decode_cstr, test_cstr},
   {"cstr-pure", encode_cstr_pure, NULL,        test_cstr_pure},
+  {"fancy",     encode_fancy,     NULL,        test_fancy},
   {0, 0, 0, 0}
 };
 
-const char *encode_formats = "none, raw, hex, html, html-pure, cstr, cstr-pure";
+const char *encode_formats = "none, raw, hex, html, html-pure, cstr, cstr-pure, fancy";
 const char *decode_formats = "raw, hex, html, cstr";
 
 static format_t *format_get_by_name(char *name)
@@ -569,6 +574,71 @@ static uint8_t *encode_cstr_pure(uint8_t *data, uint64_t data_length, uint64_t *
   }
 
   return buffer_create_string_and_destroy(b, out_length);
+}
+
+static char get_character_from_byte(uint8_t byte)
+{
+	if(byte < 0x20 || byte > 0x7F)
+		return '.';
+	return byte;
+}
+
+static uint8_t *encode_fancy(uint8_t *data, uint64_t data_length, uint64_t *out_length)
+{
+  uint64_t i, j;
+  buffer_t *b = buffer_create(BO_HOST);
+  char tmp[64];
+
+  for(i = 0; i < data_length; i++)
+  {
+    if((i % 16) == 0) /* if i is a multiple of 16... */
+    {
+      if(i > 0)
+      {
+        sprintf(tmp, "   ");
+        buffer_add_string(b, tmp);
+        for(j = 16; j > 0; j--)
+          buffer_add_int8(b, get_character_from_byte(data[i - j]));
+      }
+      sprintf(tmp, "\n%04X: ", (uint16_t)i);
+      buffer_add_string(b, tmp);
+    }
+
+    sprintf(tmp, "%02X ", data[i]);
+    buffer_add_string(b, tmp);
+  }
+
+  if((i % 16) == 0)
+  {
+      sprintf(tmp, "   ");
+      buffer_add_string(b, tmp);
+      for(j = 16; j > 0; j--)
+        buffer_add_int8(b, get_character_from_byte(data[i - j]));
+  }
+  else
+  {
+    /* Add padding spaces. */
+    for(i = data_length % 16; i < 17; i++)
+      buffer_add_string(b, "   ");
+
+    for(i = data_length - (data_length % 16); i < data_length; i++)
+      buffer_add_int8(b, get_character_from_byte(data[i]));
+  }
+
+
+  sprintf(tmp, "\nLength: 0x%"PRIX64" (%"PRId64")\n", data_length, data_length);
+  buffer_add_string(b, tmp);
+
+  /* Null terminate the buffer. */
+  buffer_add_int8(b, 0);
+
+  return buffer_create_string_and_destroy(b, out_length);
+}
+
+void test_fancy()
+{
+  /* This is to ui-ey to test, not much we can do without just re-implementing
+   * the entire thing. */
 }
 
 void format_test()
