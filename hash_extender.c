@@ -34,7 +34,7 @@ typedef struct {
   uint8_t  *signature;
   uint64_t  signature_length;
 
-  char      **formats;
+  char    **formats;
   uint8_t   format_count;
 
   uint64_t  secret_min;

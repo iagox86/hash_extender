@@ -80,7 +80,7 @@ const char *hash_type_list =
 #endif
   ;
 
-const char *hash_type_array[] = {
+char *hash_type_array[] = {
   "md4",
   "md5",
   "ripemd160",

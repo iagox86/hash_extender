@@ -6,7 +6,7 @@
 #define MAX_DIGEST_LENGTH (512/8) /* TODO: Is this used? */
 extern const uint64_t hash_type_count;
 extern const char *hash_type_list;
-extern const char *hash_type_array[];
+extern       char *hash_type_array[];
 
 BOOL hash_type_exists(char *hash_type_name);
 uint64_t hash_type_digest_size(char *hash_type_name);
