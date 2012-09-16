@@ -1,11 +1,13 @@
 #ifndef __FORMATS_H__
 #define __FORMATS_H__
 
-/* formats.h By Ron Bowes Created September/2012
+/* formats.h
+ * By Ron Bowes
+ * Created September/2012
  *
  * See LICENSE.txt
  *
- * This function implements encoders/decoders of various formats. It was
+ * This module implements encoders/decoders of various formats. It was
  * originally written for the hash_extender tool, but is generic enough to be
  * used elsewhere.
  *
