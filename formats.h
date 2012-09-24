@@ -54,7 +54,7 @@ extern const char *encode_formats;
 extern const char *decode_formats;
 
 /* Check if the format exists. */
-BOOL     format_exists(char *format);
+bool     format_exists(char *format);
 
 /* Encode the data and return it in a newly allocated string. */
 uint8_t *format_encode(char *format_name, uint8_t *data, uint64_t data_length, uint64_t *out_length);

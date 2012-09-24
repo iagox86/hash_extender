@@ -49,7 +49,7 @@ extern const char *hash_type_list;
 extern       char *hash_type_array[];
 
 /* Check whether or not the given hash type exists. */
-BOOL hash_type_exists(char *hash_type_name);
+bool hash_type_exists(char *hash_type_name);
 
 /* Basically an accessor method for the hash type's digest size. */
 uint64_t hash_type_digest_size(char *hash_type_name);

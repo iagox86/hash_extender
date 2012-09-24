@@ -85,7 +85,7 @@ static format_t *format_get_by_name(char *name)
   return NULL;
 }
 
-BOOL format_exists(char *format_name)
+bool format_exists(char *format_name)
 {
   return format_get_by_name(format_name) != NULL;
 }

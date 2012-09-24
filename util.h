@@ -5,11 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
-
-typedef enum {
-  FALSE = 0,
-  TRUE  = 1
-} BOOL;
+#include <stdbool.h>
 
 void print_hex(unsigned char *data, unsigned int length);
 void print_hex_fancy(uint8_t *data, uint64_t length);

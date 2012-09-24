@@ -46,7 +46,7 @@ typedef struct
 {
   char                 *name;
   uint64_t              digest_size;
-  BOOL                  little_endian;
+  bool                  little_endian;
   uint64_t              block_size;
   uint64_t              length_size;
 
@@ -54,15 +54,15 @@ typedef struct
 } hash_type_t;
 
 static hash_type_t hash_types[] = {
-  {"md4",       MD4_DIGEST_LENGTH,       TRUE,  64,  8,  md4_hash},
-  {"md5",       MD5_DIGEST_LENGTH,       TRUE,  64,  8,  md5_hash},
-  {"ripemd160", RIPEMD160_DIGEST_LENGTH, TRUE,  64,  8,  ripemd160_hash},
-  {"sha",       SHA_DIGEST_LENGTH,       FALSE, 64,  8,  sha_hash},
-  {"sha1",      SHA_DIGEST_LENGTH,       FALSE, 64,  8,  sha1_hash},
-  {"sha256",    SHA256_DIGEST_LENGTH,    FALSE, 64,  8,  sha256_hash},
-  {"sha512",    SHA512_DIGEST_LENGTH,    FALSE, 128, 16, sha512_hash},
+  {"md4",       MD4_DIGEST_LENGTH,       true,  64,  8,  md4_hash},
+  {"md5",       MD5_DIGEST_LENGTH,       true,  64,  8,  md5_hash},
+  {"ripemd160", RIPEMD160_DIGEST_LENGTH, true,  64,  8,  ripemd160_hash},
+  {"sha",       SHA_DIGEST_LENGTH,       false, 64,  8,  sha_hash},
+  {"sha1",      SHA_DIGEST_LENGTH,       false, 64,  8,  sha1_hash},
+  {"sha256",    SHA256_DIGEST_LENGTH,    false, 64,  8,  sha256_hash},
+  {"sha512",    SHA512_DIGEST_LENGTH,    false, 128, 16, sha512_hash},
 #ifndef DISABLE_WHIRLPOOL
-  {"whirlpool", WHIRLPOOL_DIGEST_LENGTH, FALSE, 64,  32, whirlpool_hash},
+  {"whirlpool", WHIRLPOOL_DIGEST_LENGTH, false, 64,  32, whirlpool_hash},
 #endif
   {0, 0, 0, 0, 0}
 };
@@ -105,7 +105,7 @@ static hash_type_t *get_hash_type(char *name)
   return NULL;
 }
 
-BOOL hash_type_exists(char *hash_type_name)
+bool hash_type_exists(char *hash_type_name)
 {
   return get_hash_type(hash_type_name) != NULL;
 }
