@@ -91,7 +91,7 @@ char *hash_type_array[] = {
 #ifndef DISABLE_WHIRLPOOL
   "whirlpool",
 #endif
-  0
+  NULL
 };
 
 const uint64_t hash_type_count = (sizeof(hash_types) / sizeof(hash_type_t));
