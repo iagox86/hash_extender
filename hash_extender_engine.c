@@ -99,9 +99,11 @@ const uint64_t hash_type_count = (sizeof(hash_types) / sizeof(hash_type_t));
 static hash_type_t *get_hash_type(char *name)
 {
   int i;
-  for(i = 0; hash_types[i].name; i++)
+
+ for(i = 0; hash_types[i].name; i++)
     if(!strcmp(hash_types[i].name, name))
       return &hash_types[i];
+
   return NULL;
 }
 
