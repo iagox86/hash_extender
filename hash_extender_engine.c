@@ -260,62 +260,51 @@ static void hash_test_lengths(char *hash_type_name)
   uint8_t original_signature[hash_type->digest_size];
   uint8_t new_signature[hash_type->digest_size];
 
+  uint64_t a_len;
+  uint64_t d_len;
+  uint64_t s_len;
   uint64_t i;
+  uint64_t j;
+  char *text;
 
   printf("%s: Testing hash data of various lengths...\n", hash_type->name);
 
-  for(i = 0; i < 993; i++)
+  for(i = 0; i < 3; i++)
   {
-    /* Get the original signature. */
-    hash_gen_signature(hash_type_name, secret, i, data, strlen((char*)data), original_signature);
+    for(j = 0; j < 993; j++)
+    {
+      a_len = strlen((char*)append);
+      d_len = strlen((char*)data);
+      s_len = strlen((char*)secret);
 
-    /* Create the new data. */
-    new_data = hash_append_data(hash_type_name, data, strlen((char*)data), i, append, strlen((char*)append), &new_length);
+      switch (i)
+      {
+      case 0:
+        text = " different lengths (data)";
+        s_len = j;
+      case 1:
+        text = " different lengths (secret)";
+        d_len = j;
+      case 2:
+        text = " different lengths (secret)";
+        a_len = j;
+      }
 
-    /* Generate an evil signature with the data appended. */
-    hash_gen_signature_evil(hash_type_name, i, strlen((char*)data), original_signature, append, strlen((char*)append), new_signature);
+      /* Get the original signature. */
+      hash_gen_signature(hash_type_name, secret, s_len, data, d_len, original_signature);
 
-    /* Check the new signature. */
-    test_check_boolean(" different lengths (secret)", hash_test_validate(hash_type_name, secret, i, new_data, new_length, new_signature));
+      /* Create the new data. */
+      new_data = hash_append_data(hash_type_name, data, d_len, s_len, append, a_len, &new_length);
 
-    /* Free the memory we allocatd. */
-    free(new_data);
-  }
+      /* Generate an evil signature with the data appended. */
+      hash_gen_signature_evil(hash_type_name, s_len, d_len, original_signature, append, a_len, new_signature);
 
-  for(i = 0; i < 993; i++)
-  {
-    /* Get the original signature. */
-    hash_gen_signature(hash_type_name, secret, strlen((char*)secret), data, i, original_signature);
+      /* Check the new signature. */
+      test_check_boolean(text, hash_test_validate(hash_type_name, secret, s_len, new_data, new_length, new_signature));
 
-    /* Create the new data. */
-    new_data = hash_append_data(hash_type_name, data, i, strlen((char*)secret), append, strlen((char*)append), &new_length);
-
-    /* Generate an evil signature with the data appended. */
-    hash_gen_signature_evil(hash_type_name, strlen((char*)secret), i, original_signature, append, strlen((char*)append), new_signature);
-
-    /* Check the new signature. */
-    test_check_boolean(" different lengths (data)", hash_test_validate(hash_type_name, secret, strlen((char*)secret), new_data, new_length, new_signature));
-
-    /* Free the memory we allocatd. */
-    free(new_data);
-  }
-
-  for(i = 0; i < 993; i++)
-  {
-    /* Get the original signature. */
-    hash_gen_signature(hash_type_name, secret, strlen((char*)secret), data, strlen((char*)data), original_signature);
-
-    /* Create the new data. */
-    new_data = hash_append_data(hash_type_name, data, strlen((char*)data), strlen((char*)secret), append, i, &new_length);
-
-    /* Generate an evil signature with the data appended. */
-    hash_gen_signature_evil(hash_type_name, strlen((char*)secret), strlen((char*)data), original_signature, append, i, new_signature);
-
-    /* Check the new signature. */
-    test_check_boolean(" different lengths (secret)", hash_test_validate(hash_type_name, secret, strlen((char*)secret), new_data, new_length, new_signature));
-
-    /* Free the memory we allocatd. */
-    free(new_data);
+      /* Free the memory we allocatd. */
+      free(new_data);
+    }
   }
 }
 
