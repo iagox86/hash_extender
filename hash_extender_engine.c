@@ -225,7 +225,7 @@ static void hash_test_extension(char *hash_type_name)
   uint8_t *data      = (uint8_t*)"DATA";
   uint8_t *append    = (uint8_t*)"APPEND";
   uint8_t *new_data;
-  uint64_t  new_length;
+  uint64_t new_length;
   hash_type_t *hash_type = get_hash_type(hash_type_name);
 
   uint8_t original_signature[hash_type->digest_size];
