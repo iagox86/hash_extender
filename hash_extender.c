@@ -226,7 +226,7 @@ int main(int argc, char *argv[])
     {"file",                 required_argument, 0, 0}, /* Input file. */
     {"data-format",          required_argument, 0, 0}, /* Input string format. */
     {"append",               required_argument, 0, 0}, /* Append string. */
-    {"a",                    required_argument, 0, 0}, 
+    {"a",                    required_argument, 0, 0},
     {"append-format",        required_argument, 0, 0}, /* Append format. */
     {"signature",            required_argument, 0, 0}, /* Input signature. */
     {"s",                    required_argument, 0, 0},

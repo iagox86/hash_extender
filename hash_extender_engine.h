@@ -8,7 +8,7 @@
  * See LICENSE.txt
  *
  * This module implements a hash length extension attack against a variety of
- * hash types, and can easily be modified to accept more. 
+ * hash types, and can easily be modified to accept more.
  *
  * As a user, there are two functions that really matter: The first is
  * hash_append_data(), which appends the requested data to the string in a such

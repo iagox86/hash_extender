@@ -67,7 +67,7 @@ static hash_type_t hash_types[] = {
   {0, 0, 0, 0, 0}
 };
 
-const char *hash_type_list = 
+const char *hash_type_list =
   "md4"
   ", md5"
   ", ripemd160"
