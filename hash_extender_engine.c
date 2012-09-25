@@ -1,7 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
 #include <arpa/inet.h>
 
 #ifdef FREEBSD
@@ -308,7 +304,7 @@ static void hash_test_lengths(char *hash_type_name)
   }
 }
 
-void hash_test()
+void hash_test(void)
 {
   int i;
 

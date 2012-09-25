@@ -1,6 +1,3 @@
-#include <stdio.h>
-#include <unistd.h>
-
 #include "formats.h"
 #include "hash_extender_engine.h"
 #include "test.h"

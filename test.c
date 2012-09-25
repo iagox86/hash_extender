@@ -1,18 +1,15 @@
-#include <stdio.h>
-#include <stdint.h>
-
 #include "util.h"
 
 static int tests_run = 0;
 static int tests_passed = 0;
 
-static void test_passed()
+static void test_passed(void)
 {
   tests_run++;
   tests_passed++;
 }
 
-static void test_failed()
+static void test_failed(void)
 {
   tests_run++;
 }
@@ -70,7 +67,7 @@ void test_check_integer(char *description, uint32_t expected, uint32_t result)
   }
 }
 
-void test_report()
+void test_report(void)
 {
   if(tests_run == 0)
   {

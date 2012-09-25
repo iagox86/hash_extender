@@ -1,9 +1,5 @@
 #include <ctype.h>
-#include <err.h>
 #include <getopt.h>
-#include <inttypes.h>
-#include <stdio.h>
-#include <unistd.h>
 
 #include "buffer.h"
 #include "formats.h"

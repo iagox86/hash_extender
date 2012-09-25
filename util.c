@@ -1,8 +1,4 @@
 #include <ctype.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
 
 #include "buffer.h"
 #include "test.h"
@@ -57,10 +53,10 @@ void print_hex_fancy(uint8_t *data, uint64_t length)
 void die(char *msg)
 {
   fprintf(stderr, "FATAL ERROR: %s\n", msg);
-  exit(1);
+  exit(EXIT_FAILURE);
 }
 
-void die_MEM()
+void die_MEM(void)
 {
   die("Out of memory");
 }

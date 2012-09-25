@@ -66,6 +66,6 @@ void hash_gen_signature(char *hash_type_name, uint8_t *secret, uint64_t secret_l
 void hash_gen_signature_evil(char *hash_type_name, uint64_t secret_length, uint64_t data_length, uint8_t *original_signature, uint8_t *append, uint64_t append_length, uint8_t *new_signature);
 
 /* Self-tests. */
-void hash_test();
+void hash_test(void);
 
 #endif

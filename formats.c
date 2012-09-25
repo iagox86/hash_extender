@@ -1,9 +1,4 @@
 #include <ctype.h>
-#include <inttypes.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
 
 #include "buffer.h"
 #include "test.h"
@@ -14,37 +9,37 @@
 /* I usually hate prototypes, but I want the array of function pointers at the
  * top so I don't really have a choice in this case. */
 static uint8_t *encode_none(uint8_t *data, uint64_t data_length, uint64_t *out_length);
-static void     test_none();
+static void     test_none(void);
 
 static uint8_t *encode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 static uint8_t *decode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length);
-static void     test_raw();
+static void     test_raw(void);
 
 static uint8_t *encode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 static uint8_t *decode_html(uint8_t *data, uint64_t data_length, uint64_t *out_length);
-static void     test_html();
+static void     test_html(void);
 
 static uint8_t *encode_html_pure(uint8_t *data, uint64_t data_length, uint64_t *out_length);
-static void     test_html_pure();
+static void     test_html_pure(void);
 
 static uint8_t *encode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 static uint8_t *decode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_length);
-static void     test_hex();
+static void     test_hex(void);
 
 static uint8_t *encode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 static uint8_t *decode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_length);
-static void     test_cstr();
+static void     test_cstr(void);
 
 static uint8_t *encode_cstr_pure(uint8_t *data, uint64_t data_length, uint64_t *out_length);
-static void     test_cstr_pure();
+static void     test_cstr_pure(void);
 
 static uint8_t *encode_fancy(uint8_t *data, uint64_t data_length, uint64_t *out_length);
-static void     test_fancy();
+static void     test_fancy(void);
 
 /* Define some types so we can stores function pointers. */
 typedef uint8_t* (func_encoder)(uint8_t *data, uint64_t data_length, uint64_t *out_length);
 typedef uint8_t* (func_decoder)(uint8_t *data, uint64_t data_length, uint64_t *out_length);
-typedef void (func_test)();
+typedef void (func_test)(void);
 
 /* This struct defines a format - the name, an encoder, decoder, and a test
  * routine. */
@@ -77,6 +72,7 @@ const char *decode_formats = "raw, hex, html, cstr";
 static format_t *format_get_by_name(char *name)
 {
   int i;
+
   for(i = 0; formats[i].name; i++)
   {
     if(!strcmp(formats[i].name, name))
@@ -93,6 +89,7 @@ bool format_exists(char *format_name)
 uint8_t *format_encode(char *format_name, uint8_t *data, uint64_t data_length, uint64_t *out_length)
 {
   format_t *format = format_get_by_name(format_name);
+
   if(format && format->encoder)
     return format->encoder(data, data_length, out_length);
   else
@@ -102,6 +99,7 @@ uint8_t *format_encode(char *format_name, uint8_t *data, uint64_t data_length, u
 uint8_t *format_decode(char *format_name, uint8_t *data, uint64_t data_length, uint64_t *out_length)
 {
   format_t *format = format_get_by_name(format_name);
+
   if(format && format->decoder)
     return format->decoder(data, data_length, out_length);
   else
@@ -121,7 +119,7 @@ static uint8_t hex_to_int(uint8_t *hex)
            ((isdigit(digit2) ? (digit2 - '0') : (tolower(digit2) - 'a' + 10)) << 0);
 }
 
-static void test_hex_to_int()
+static void test_hex_to_int(void)
 {
   int i;
   char buffer[] = "AA\0";
@@ -137,9 +135,11 @@ static void test_hex_to_int()
 static uint8_t *encode_none(uint8_t *data, uint64_t data_length, uint64_t *out_length) {
   /* Encoding the type 'none' is so easy it's basically cheating. Simply return
    * a 0-length string. */
-  *out_length = 0; return malloc(0); }
+  *out_length = 0;
+  return malloc(0);
+}
 
-static void test_none()
+static void test_none(void)
 {
   int      i;
   char     raw_data[32];
@@ -164,6 +164,7 @@ static uint8_t *encode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_le
 {
   /* Create a new string and copy the data into it. */
   uint8_t *result = malloc(data_length);
+
   memcpy(result, data, data_length);
   *out_length = data_length;
   return result;
@@ -172,12 +173,13 @@ static uint8_t *encode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_le
 static uint8_t *decode_raw(uint8_t *data, uint64_t data_length, uint64_t *out_length)
 {
   uint8_t *result = malloc(data_length);
+
   memcpy(result, data, data_length);
   *out_length = data_length;
   return result;
 }
 
-static void test_raw()
+static void test_raw(void)
 {
   int       i;
   char      raw_data[32];
@@ -273,7 +275,7 @@ static uint8_t *decode_html(uint8_t *data, uint64_t data_length, uint64_t *out_l
   return buffer_create_string_and_destroy(b, out_length);
 }
 
-static void test_html()
+static void test_html(void)
 {
   int       i;
   char      raw_data[32];
@@ -355,7 +357,7 @@ static uint8_t *encode_html_pure(uint8_t *data, uint64_t data_length, uint64_t *
   return buffer_create_string_and_destroy(b, out_length);
 }
 
-static void test_html_pure()
+static void test_html_pure(void)
 {
   int       i;
   char      raw_data[32];
@@ -417,7 +419,7 @@ static uint8_t *decode_hex(uint8_t *data, uint64_t data_length, uint64_t *out_le
   return buffer_create_string_and_destroy(b, out_length);
 }
 
-static void test_hex()
+static void test_hex(void)
 {
   int       i;
   char      raw_data[32];
@@ -569,7 +571,7 @@ static uint8_t *decode_cstr(uint8_t *data, uint64_t data_length, uint64_t *out_l
   return buffer_create_string_and_destroy(b, out_length);
 }
 
-static void test_cstr()
+static void test_cstr(void)
 {
   int       i;
   char      raw_data[32];
@@ -660,7 +662,7 @@ static uint8_t *encode_cstr_pure(uint8_t *data, uint64_t data_length, uint64_t *
   return buffer_create_string_and_destroy(b, out_length);
 }
 
-static void test_cstr_pure()
+static void test_cstr_pure(void)
 {
   int       i;
   char      raw_data[32];
@@ -736,13 +738,13 @@ static uint8_t *encode_fancy(uint8_t *data, uint64_t data_length, uint64_t *out_
   return buffer_create_string_and_destroy(b, out_length);
 }
 
-void test_fancy()
+void test_fancy(void)
 {
-  /* This is to ui-ey to test, not much we can do without just re-implementing
+  /* This is to UI-ey to test, not much we can do without just re-implementing
    * the entire thing. */
 }
 
-void format_test()
+void format_test(void)
 {
   int i;
 
