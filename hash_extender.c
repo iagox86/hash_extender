@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <err.h>
 #include <getopt.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -47,7 +48,9 @@ typedef struct {
   uint8_t   quiet;
 } options_t;
 
-void output_format(char *format, uint8_t *data, uint64_t data_length)
+static const char *program;
+
+static void output_format(char *format, uint8_t *data, uint64_t data_length)
 {
   uint8_t *out_data;
   uint64_t out_length;
@@ -58,7 +61,7 @@ void output_format(char *format, uint8_t *data, uint64_t data_length)
 }
 
 /* Output the data in the chosen format. */
-void output(options_t *options, char *type, uint64_t secret_length, uint8_t *new_data, uint64_t new_data_length, uint8_t *new_signature)
+static void output(options_t *options, char *type, uint64_t secret_length, uint8_t *new_data, uint64_t new_data_length, uint8_t *new_signature)
 {
   if(options->quiet)
   {
@@ -91,9 +94,8 @@ void output(options_t *options, char *type, uint64_t secret_length, uint8_t *new
   }
 }
 
-void go(options_t *options)
+static void go(options_t *options)
 {
-  uint32_t i;
   size_t secret_length;
 
   /* Loop through the possible lengths of 'secret'. */
@@ -102,6 +104,7 @@ void go(options_t *options)
     uint8_t *new_data;
     uint8_t new_signature[MAX_DIGEST_LENGTH];
     uint64_t new_length;
+    uint32_t i;
 
     /* Loop through the possible hashtypes. */
     for(i = 0; i < options->format_count; i++)
@@ -123,7 +126,7 @@ void go(options_t *options)
   }
 }
 
-void usage(char *program)
+static void usage(void)
 {
   printf(
     "\n"
@@ -201,14 +204,13 @@ void usage(char *program)
     encode_formats
   );
 
+  exit(EXIT_FAILURE);
 }
 
-void error(char *program, char *message)
+static void error(const char *message)
 {
-  usage(program);
-  printf("\n");
-  printf("ERROR: %s\n", message);
-  exit(1);
+  warnx(message);
+  usage();
 }
 
 int main(int argc, char *argv[])
@@ -254,6 +256,8 @@ int main(int argc, char *argv[])
   memset(&options, 0, sizeof(options_t));
   options.formats = (char**) malloc(hash_type_count * sizeof(char*));
 
+  program = argv[0];
+
   opterr = 0;
   while((c = getopt_long_only(argc, argv, "", long_options, &option_index)) != EOF)
   {
@@ -271,7 +275,7 @@ int main(int argc, char *argv[])
           if(format_exists(optarg))
             options.data_format = optarg;
           else
-            error(argv[0], "Unknown option passed to --data-format");
+            error("Unknown option passed to --data-format");
         }
         else if(!strcmp(option_name, "file"))
         {
@@ -286,7 +290,7 @@ int main(int argc, char *argv[])
           if(format_exists(optarg))
             options.append_format = optarg;
           else
-            error(argv[0], "Unknown option passed to --append-format");
+            error("Unknown option passed to --append-format");
         }
         else if(!strcmp(option_name, "signature") || !strcmp(option_name, "s"))
         {
@@ -297,31 +301,31 @@ int main(int argc, char *argv[])
           if(format_exists(optarg))
             options.signature_format = optarg;
           else
-            error(argv[0], "Unknown option passed to --signature-format");
+            error("Unknown option passed to --signature-format");
         }
         else if(!strcmp(option_name, "format") || !strcmp(option_name, "f"))
         {
           if(!hash_type_exists(optarg))
-            error(argv[0], "Invalid hash type passed to --format");
+            error("Invalid hash type passed to --format");
           options.formats[options.format_count++] = optarg;
         }
         else if(!strcmp(option_name, "secret"))
         {
           if(options.secret_min != 0 || options.secret_max != 0)
-            error(argv[0], "--secret is not compatible with --secret-min or --secret-max");
+            error("--secret is not compatible with --secret-min or --secret-max");
           options.secret_min = atoi(optarg);
           options.secret_max = atoi(optarg);
         }
         else if(!strcmp(option_name, "secret-min"))
         {
           if(options.secret_min != 0)
-            error(argv[0], "--secret is not compatible with --secret-min or --secret-max");
+            error("--secret is not compatible with --secret-min or --secret-max");
           options.secret_min = atoi(optarg);
         }
         else if(!strcmp(option_name, "secret-max"))
         {
           if(options.secret_max != 0)
-            error(argv[0], "--secret is not compatible with --secret-min or --secret-max");
+            error("--secret is not compatible with --secret-min or --secret-max");
           options.secret_max = atoi(optarg);
         }
         else if(!strcmp(option_name, "table"))
@@ -333,19 +337,18 @@ int main(int argc, char *argv[])
           if(format_exists(optarg))
             options.out_data_format = optarg;
           else
-            error(argv[0], "Unknown option passed to --out-data-format");
+            error("Unknown option passed to --out-data-format");
         }
         else if(!strcmp(option_name, "out-signature-format"))
         {
           if(format_exists(optarg))
             options.out_signature_format = optarg;
           else
-            error(argv[0], "Unknown option passed to --out-signature-format");
+            error("Unknown option passed to --out-signature-format");
         }
         else if(!strcmp(option_name, "help") || !strcmp(option_name, "h"))
         {
-          usage(argv[0]);
-          exit(0);
+          usage();
         }
         else if(!strcmp(option_name, "test"))
         {
@@ -353,10 +356,10 @@ int main(int argc, char *argv[])
           {
             if(system("./hash_extender_test"))
             {
-              fprintf(stderr, "Can't figure out how to run hash_extender_test!");
+              errx(EXIT_FAILURE, "Can't figure out how to run hash_extender_test!");
             }
           }
-          exit(0);
+          exit(EXIT_SUCCESS);
         }
         else if(!strcmp(option_name, "quiet") || !strcmp(option_name, "q"))
         {
@@ -365,45 +368,45 @@ int main(int argc, char *argv[])
         else if(!strcmp(option_name, "version") || !strcmp(option_name, "V"))
         {
           printf("%s v%s by %s <%s>\n", NAME, VERSION, AUTHOR, EMAIL);
-          exit(0);
+          exit(EXIT_SUCCESS);
         }
         else
         {
-          error(argv[0], "Unknown option");
+          error("Unknown option");
         }
 
         break;
 
       case '?':
       default:
-        error(argv[0], "Couldn't parse argument");
+        error("Couldn't parse argument");
     }
   }
 
   /* Sanity checks. */
   if(options.data_raw == NULL && options.filename == NULL)
   {
-    error(argv[0], "--data or --file is required");
+    error("--data or --file is required");
   }
   if(options.data_raw != NULL && options.filename != NULL)
   {
-    error(argv[0], "--data and --file cannot be used together");
+    error("--data and --file cannot be used together");
   }
   if(options.filename != NULL && options.data_format != 0)
   {
-    error(argv[0], "--file amd --data-format cannot be used together");
+    error("--file amd --data-format cannot be used together");
   }
   if(options.append_raw == NULL)
   {
-    error(argv[0], "--append is required");
+    error("--append is required");
   }
   if(options.signature_raw == NULL)
   {
-    error(argv[0], "--signature is required");
+    error("--signature is required");
   }
   if(options.out_table && options.quiet)
   {
-    error(argv[0], "--table and --quiet are not compatible");
+    error("--table and --quiet are not compatible");
   }
 
   /* Set some sane defaults. */
@@ -414,7 +417,7 @@ int main(int argc, char *argv[])
   }
   else if(options.secret_min == 0 || options.secret_max == 0)
   {
-    error(argv[0], "--secret-min and --secret-max can't be used separately, please specify both.");
+    error("--secret-min and --secret-max can't be used separately, please specify both.");
   }
 
   if(!options.data_format)          options.data_format          = "raw";
@@ -449,7 +452,7 @@ int main(int argc, char *argv[])
   }
   if(options.format_count == 0)
   {
-    error(argv[0], "No valid hash formats were found");
+    error("No valid hash formats were found");
   }
 
   /* Sanity check the length of the signature. */
@@ -457,10 +460,7 @@ int main(int argc, char *argv[])
   {
     uint64_t digest_size = hash_type_digest_size(options.formats[i]);
     if(options.signature_length != digest_size)
-    {
-      fprintf(stderr, "%s's signature needs to be %"PRId64" bytes", options.formats[i], digest_size);
-      exit(1);
-    }
+      errx(EXIT_FAILURE, "%s's signature needs to be %"PRId64" bytes", options.formats[i], digest_size);
   }
 
   go(&options);
@@ -469,6 +469,5 @@ int main(int argc, char *argv[])
   free(options.append);
   free(options.signature);
 
-  return 0;
+  return EXIT_SUCCESS;
 }
-
