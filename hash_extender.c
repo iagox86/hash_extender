@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <err.h>
 #include <getopt.h>
 
 #include "buffer.h"
@@ -205,7 +206,7 @@ static void usage(void)
 
 static void error(const char *message)
 {
-  warnx(message);
+  warnx("%s", message);
   usage();
 }
 
