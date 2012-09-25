@@ -1,15 +1,15 @@
 #include <stdio.h>
+#include <unistd.h>
 
 #include "formats.h"
 #include "hash_extender_engine.h"
 #include "test.h"
 
-int main()
+int main(void)
 {
   hash_test();
   format_test();
   test_report();
 
-  return 0;
+  return EXIT_SUCCESS;
 }
-
