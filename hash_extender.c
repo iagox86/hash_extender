@@ -306,7 +306,7 @@ int main(int argc, char *argv[])
             error("Invalid hash type passed to --format");
           options.formats[options.format_count++] = optarg;
         }
-        else if(!strcmp(option_name, "secret"))
+        else if(!strcmp(option_name, "secret") || !strcmp(option_name, "l"))
         {
           if(options.secret_min != 0 || options.secret_max != 0)
             error("--secret is not compatible with --secret-min or --secret-max");
