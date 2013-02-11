@@ -201,6 +201,17 @@ static void usage(void)
     encode_formats
   );
 
+  printf("\n"
+    "The arguments you probably want to give are (see above for more details):\n"
+    "-d <data>\n"
+    "-s <original signature>\n"
+    "-a <data to append>\n"
+    "-f <hash format>\n"
+    "-l <length of secret>\n");
+
+  printf("\n");
+
+
   exit(EXIT_FAILURE);
 }
 
