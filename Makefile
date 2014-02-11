@@ -7,11 +7,11 @@ WHIRLPOOL	:= -DDISABLE_WHIRLPOOL
 endif
 
 # Capture the operating system name for use by the preprocessor.
-OS		:= $(shell uname -o | tr '/[[:lower:]]' '_[[:upper:]]')
+OS		:= $(shell uname | tr '/[[:lower:]]' '_[[:upper:]]')
 
 # These are the specifications of the toolchain
 CC		:= gcc
-CFLAGS		:= -std=c89 -g -oS -Wall -Werror
+CFLAGS		:= -std=c89 -g -oS -Wall -Werror -Wno-deprecated
 CPPFLAGS	:= -D_BSD_SOURCE -D$(OS) $(WHIRLPOOL)
 LDFLAGS		:= -lssl -lcrypto
 
