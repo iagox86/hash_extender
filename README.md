@@ -25,7 +25,7 @@ I'm more than happy to extend this to cover other hashing algorithms as well, pr
 
 An application is susceptible to a hash length extension attack if it prepends a secret value to a string, hashes it with a vulnerable algorithm, and entrusts the attacker with both the string and the hash, but not the secret.  Then, the server relies on the secret to decide whether or not the data returned later is the same as the original data.
 
-It turns out, even though the attacker doesn't know the value of the prepended secret, he can still generate a valid hash for `{secret || data || attacker_controlled_data}`! This is done by simply picking up where the hashing algorithm left off; it turns out, 100% of the state needed to continue a hash is in the output of most hashing algorithms! We simply load that state into the appropriate hash structure and continue hashing.</p>
+It turns out, even though the attacker doesn't know the value of the prepended secret, he can still generate a valid hash for `{secret || data || attacker_controlled_data}`! This is done by simply picking up where the hashing algorithm left off; it turns out, 100% of the state needed to continue a hash is in the output of most hashing algorithms! We simply load that state into the appropriate hash structure and continue hashing.
 
 **TL;DR: given a hash that is composed of a string with an unknown prefix, an attacker can append to the string and produce a new hash that still has the unknown prefix.**
 
@@ -45,37 +45,35 @@ Knowing only `data`, `H`, and `signature`, the attacker's goal is to append `app
 
 ### Padding
 
-<p>Before we look at the actual attack, we have to talk a little about padding.</p>
+Before we look at the actual attack, we have to talk a little about padding.
 
-<p>When calculating <em>H</em>(<em>secret</em> + <em>data</em>), the string (<em>secret</em> + <em>data</em>) is padded with a '1' bit and some number of '0' bits, followed by the length of the string. That is, in hex, the padding is a 0x80 byte followed by some number of 0x00 bytes and then the length. The number of 0x00 bytes, the number of bytes reserved for the length, and the way the length is encoded, depends on the particular algorithm and blocksize.</p>
+When calculating `H`(`secret` + `data`), the string (`secret` + `data`) is padded with a '1' bit and some number of '0' bits, followed by the length of the string. That is, in hex, the padding is a 0x80 byte followed by some number of 0x00 bytes and then the length. The number of 0x00 bytes, the number of bytes reserved for the length, and the way the length is encoded, depends on the particular algorithm and blocksize.
 
-<p>With most algorithms (including MD4, MD5, RIPEMD-160, SHA-0, SHA-1, and SHA-256), the string is padded until its length is congruent to 56 bytes (mod 64). Or, to put it another way, it's padded until the length is 8 bytes less than a full (64-byte) block (the 8 bytes being size of the encoded length field). There are two hashes implemented in hash_extender that don't use these values: SHA-512 uses a 128-byte blocksize and reserves 16 bytes for the length field, and WHIRLPOOL uses a 64-byte blocksize and reserves 32 bytes for the length field.</p>
+With most algorithms (including MD4, MD5, RIPEMD-160, SHA-0, SHA-1, and SHA-256), the string is padded until its length is congruent to 56 bytes (mod 64). Or, to put it another way, it's padded until the length is 8 bytes less than a full (64-byte) block (the 8 bytes being size of the encoded length field). There are two hashes implemented in hash_extender that don't use these values: SHA-512 uses a 128-byte blocksize and reserves 16 bytes for the length field, and WHIRLPOOL uses a 64-byte blocksize and reserves 32 bytes for the length field.
 
-<p>The endianness of the length field is also important. MD4, MD5, and RIPEMD-160 are little-endian, whereas the SHA family and WHIRLPOOL are big-endian. Trust me, that distinction cost me days of work!</p>
+The endianness of the length field is also important. MD4, MD5, and RIPEMD-160 are little-endian, whereas the SHA family and WHIRLPOOL are big-endian. Trust me, that distinction cost me days of work!
 
-<p>In our example, <em>length(secret || data) = length("secretdata")</em> is 10 (0x0a) bytes, or 80 (0x50) bits. So, we have 10 bytes of data (<em>"secretdata"</em>), 46 bytes of padding (80 00 00 ...), and an 8-byte little-endian length field (50 00 00 00 00 00 00 00), for a total of 64 bytes (or one block). Put together, it looks like this:</p>
+In our example, `length(secret || data) = length("secretdata")` is 10 (0x0a) bytes, or 80 (0x50) bits. So, we have 10 bytes of data (`"secretdata"`), 46 bytes of padding (80 00 00 ...), and an 8-byte little-endian length field (50 00 00 00 00 00 00 00), for a total of 64 bytes (or one block). Put together, it looks like this:
 
     0000  73 65 63 72 65 74 64 61 74 61 80 00 00 00 00 00  secretdata......
     0010  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
     0020  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
     0030  00 00 00 00 00 00 00 00 50 00 00 00 00 00 00 00  ........P.......
 
-<p>Breaking down the string, we have:</p>
+Breaking down the string, we have:
 
-<ul>
-  <li><em>"secret" = secret</em></li>
-  <li><em>"data" = data</em></li>
-  <li>80 00 00 ... &mdash; The 46 bytes of padding, starting with 0x80</li>
-  <li>50 00 00 00 00 00 00 00 &mdash; The bit length in little endian</li>
-</ul>
+- `"secret" = secret`
+- `"data" = data`
+- 80 00 00 ... -- The 46 bytes of padding, starting with 0x80
+- 50 00 00 00 00 00 00 00 -- The bit length in little endian
 
-<p>This is the exact data that <em>H</em> hashed in the original example.</p>
+This is the exact data that `H` hashed in the original example.
 
 ### The attack
 
-<p>Now that we have the data that <em>H</em> hashes, let's look at how to perform the actual attack.</p>
+Now that we have the data that `H` hashes, let's look at how to perform the actual attack.
 
-<p>First, let's just append <em>append</em> to the string. Easy enough!  Here's what it looks like:</p>
+First, let's just append `append` to the string. Easy enough!  Here's what it looks like:
 
     0000  73 65 63 72 65 74 64 61 74 61 80 00 00 00 00 00  secretdata......
     0010  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
@@ -83,25 +81,23 @@ Knowing only `data`, `H`, and `signature`, the attacker's goal is to append `app
     0030  00 00 00 00 00 00 00 00 50 00 00 00 00 00 00 00  ........P.......
     0040  61 70 70 65 6e 64                                append
 
-<p>The hash of that block is what we ultimately want to a) calculate, and b) get the server to calculate. The value of that block of data can be calculated in two ways:</p>
+The hash of that block is what we ultimately want to a) calculate, and b) get the server to calculate. The value of that block of data can be calculated in two ways:
 
-<ul>
-  <li>By sticking it in a buffer and performing <em>H(buffer)</em></li>
-  <li>By starting at the end of the first block, using the state we already know from <em>signature</em>, and hashing <em>append</em> starting from that state</li>
-</ul>
+- By sticking it in a buffer and performing `H(buffer)`
+- By starting at the end of the first block, using the state we already know from `signature`, and hashing `append` starting from that state
 
-<p>The first method is what the server will do, and the second is what the attacker will do. Let's look at the server, first, since it's the easier example.</p>
+The first method is what the server will do, and the second is what the attacker will do. Let's look at the server, first, since it's the easier example.
 
 #### Server's calculation
 
-<p>We know the server will prepend <em>secret</em> to the string, so we send it the string minus the <em>secret</em> value:</p>
+We know the server will prepend `secret` to the string, so we send it the string minus the `secret` value:
 
     0000  64 61 74 61 80 00 00 00 00 00 00 00 00 00 00 00  data............
     0010  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
     0020  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
     0030  00 00 50 00 00 00 00 00 00 00 61 70 70 65 6e 64  ..P.......append
 
-Don't be fooled by this being exactly 64 bytes (the blocksize) -- that's only happening because <em>secret</em> and <em>append</em> are the same length. Perhaps I shouldn't have chosen that as an example, but I'm not gonna start over!
+Don't be fooled by this being exactly 64 bytes (the blocksize) -- that's only happening because `secret` and `append` are the same length. Perhaps I shouldn't have chosen that as an example, but I'm not gonna start over!
 
 The server will prepend `secret` to that string, creating:
 
@@ -115,7 +111,7 @@ And hashes it to the following value:
 
     6ee582a1669ce442f3719c47430dadee
 
-<p>For those of you playing along at home, you can prove this works by copying and pasting this into a terminal:</p>
+For those of you playing along at home, you can prove this works by copying and pasting this into a terminal:
 
     echo '
     #include <stdio.h>;
@@ -157,7 +153,7 @@ So, how do we calculate the hash of the data shown above without actually having
 
 Well, first, we need to look at what we have to work with: `data`, `append`, `H`, and `H(secret || data)`.
 
-<p>We need to define a new function, <em>H&prime;</em>, which uses the same hashing algorithm as <em>H</em>, but whose starting state is the final state of <em>H(secret || data)</em>, i.e., <em>signature</em>. Once we have that, we simply calculate <em>H&prime;(append)</em> and the output of that function is our hash. It sounds easy (and is!); have a look at this code:</p>
+We need to define a new function, `H&prime;`, which uses the same hashing algorithm as `H`, but whose starting state is the final state of `H(secret || data)`, i.e., `signature`. Once we have that, we simply calculate `H&prime;(append)` and the output of that function is our hash. It sounds easy (and is!); have a look at this code:
 
     echo '
     #include <stdio.h>;
@@ -196,15 +192,15 @@ The the output is, just like before:
 
 So we know the signature is right. The difference is, we didn't use `secret` at all! What's happening!?
 
-<p>Well, we create a <em>MD5_CTX</em> structure from scratch, just like normal.  Then we take the MD5 of 64 'A's. We take the MD5 of a full (64-byte) block of 'A's to ensure that any internal values -- other than the state of the hash itself -- are set to what we expect.</p>
+Well, we create a `MD5_CTX` structure from scratch, just like normal.  Then we take the MD5 of 64 'A's. We take the MD5 of a full (64-byte) block of 'A's to ensure that any internal values -- other than the state of the hash itself -- are set to what we expect.
 
-<p>Then, after that is done, we replace <em>c.A</em>, <em>c.B</em>, <em>c.C</em>, and <em>c.D</em> with the values that were found in <em>signature</em>: <em>6036708eba0d11f6ef52ad44e8b74d5b</em>. This puts the MD5_CTX structure in the same state as it finished in originally, and means that anything else we hash &mdash; in this case <em>append</em> -- will produce the same output as it would have had we hashed it the usual way.</p>
+Then, after that is done, we replace `c.A`, `c.B`, `c.C`, and `c.D` with the values that were found in `signature`: `6036708eba0d11f6ef52ad44e8b74d5b`. This puts the MD5_CTX structure in the same state as it finished in originally, and means that anything else we hash -- in this case `append` -- will produce the same output as it would have had we hashed it the usual way.
 
 We use `htonl()` on the values before setting the state variables because MD5 -- being little-endian -- outputs its values in little-endian as well.
 
 #### Result
 
-<p>So, now we have this string:</p>
+So, now we have this string:
 
     0000  64 61 74 61 80 00 00 00 00 00 00 00 00 00 00 00  data............
     0010  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
@@ -221,13 +217,13 @@ And we can generate the signature without ever knowing what the secret was!  So,
 
 **You can grab the hash_extender tool on [Github](https://github.com/iagox86/hash_extender)!**
 
-<p>This example took me hours to write. Why? Because I made about a thousand mistakes writing the code. Too many NUL bytes, not enough NUL bytes, wrong endianness, wrong algorithm, used bytes instead of bits for the length, and all sorts of other stupid problems. The first time I worked on this type of attack, I spent from 2300h till 0700h trying to get it working, and didn't figure it out till after sleeping (and with Mak's help). And don't even get me started on how long it took to port this attack to MD5. Endianness can die in a fire.</p>
+This example took me hours to write. Why? Because I made about a thousand mistakes writing the code. Too many NUL bytes, not enough NUL bytes, wrong endianness, wrong algorithm, used bytes instead of bits for the length, and all sorts of other stupid problems. The first time I worked on this type of attack, I spent from 2300h till 0700h trying to get it working, and didn't figure it out till after sleeping (and with Mak's help). And don't even get me started on how long it took to port this attack to MD5. Endianness can die in a fire.
 
-<p>Why is it so difficult? Because this is crypto, and crypto is <em>immensely</em> complicated and notoriously difficult to troubleshoot. There are lots of moving parts, lots of side cases to remember, and it's never clear why something is wrong, just that the result isn't right. What a pain!</p>
+Why is it so difficult? Because this is crypto, and crypto is `immensely` complicated and notoriously difficult to troubleshoot. There are lots of moving parts, lots of side cases to remember, and it's never clear why something is wrong, just that the result isn't right. What a pain!
 
-<p>So, I wrote hash_extender. hash_extender is (I hope) the first free tool that implements this type of attack. It's easy to use and implements this attack for every algorithm I could think of.</p>
+So, I wrote hash_extender. hash_extender is (I hope) the first free tool that implements this type of attack. It's easy to use and implements this attack for every algorithm I could think of.
 
-<p>Here's an example of its use:</p>
+Here's an example of its use:
 
     $ ./hash_extender --data data --secret 6 --append append --signature 6036708eba0d11f6ef52ad44e8b74d5b --format md5
     Type: md5
@@ -235,13 +231,13 @@ And we can generate the signature without ever knowing what the secret was!  So,
     New signature: 6ee582a1669ce442f3719c47430dadee
     New string: 64617461800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005000000000000000617070656e64
 
-<p>If you're unsure about the hash type, you can let it try different types by leaving off the --format argument. I recommend using the --table argument as well if you're trying multiple algorithms:</p>
+If you're unsure about the hash type, you can let it try different types by leaving off the --format argument. I recommend using the --table argument as well if you're trying multiple algorithms:
 
     $ ./hash_extender --data data --secret 6 --append append --signature 6036708eba0d11f6ef52ad44e8b74d5b --out-data-format html --table
     md4       89df68618821cd4c50dfccd57c79815b data80000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000P00000000000000append
     md5       6ee582a1669ce442f3719c47430dadee data80000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000P00000000000000append
 
-<p>There are plenty of options for how you format inputs and outputs, including HTML (where you use <em>%NN</em> notation), CString (where you use <em>\xNN</em> notation, as well as <em>\r</em>, <em>\n</em>, <em>\t</em>, etc.), hex (such as how the hashes were specified above), etc.</p>
+There are plenty of options for how you format inputs and outputs, including HTML (where you use `%NN` notation), CString (where you use `\xNN` notation, as well as `\r`, `\n`, `\t`, etc.), hex (such as how the hashes were specified above), etc.
 
 By default I tried to choose what I felt were the most reasonable options:
 
@@ -317,7 +313,7 @@ So, as a programmer, how do you solve this? It's actually pretty simple. There a
 - Don't trust a user with encrypted data or signatures, if you can avoid it.
 - If you can't avoid it, then use HMAC instead of trying to do it yourself.  HMAC is `designed` for this.
 
-HMAC is the real solution. HMAC is designed for securely hashing data with a secret key./p>
+HMAC is the real solution. HMAC is designed for securely hashing data with a secret key.
 
 As usual, use constructs designed for what you're doing rather than doing it yourself. The key to all crypto! [pun intended]
 
