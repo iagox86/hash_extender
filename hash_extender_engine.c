@@ -404,12 +404,12 @@ static void sha_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *s
   uint64_t i;
 
   SHA_CTX c;
-  SHA_Init(&c);
+  SHA1_Init(&c);
 
   if(state)
   {
     for(i = 0; i < state_size; i++)
-      SHA_Update(&c, "A", 1);
+      SHA1_Update(&c, "A", 1);
 
     c.h0 = htobe32(((int*)state)[0]);
     c.h1 = htobe32(((int*)state)[1]);
@@ -418,8 +418,8 @@ static void sha_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *s
     c.h4 = htobe32(((int*)state)[4]);
   }
 
-  SHA_Update(&c, data, length);
-  SHA_Final(buffer, &c);
+  SHA1_Update(&c, data, length);
+  SHA1_Final(buffer, &c);
 }
 
 static void sha1_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
