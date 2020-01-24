@@ -30,6 +30,7 @@
 #include <openssl/sha.h>
 #include <openssl/sha.h>
 #include <openssl/sha.h>
+#include "tiger.h"
 #ifndef DISABLE_WHIRLPOOL
 #include <openssl/whrlpool.h>
 #endif
@@ -47,6 +48,7 @@ static void sha_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *s
 static void sha1_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
 static void sha256_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
 static void sha512_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
+static void tiger196_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
 #ifndef DISABLE_WHIRLPOOL
 static void whirlpool_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
 #endif
@@ -74,6 +76,7 @@ static hash_type_t hash_types[] = {
   {"sha1",      SHA_DIGEST_LENGTH,       false, 64,  8,  sha1_hash},
   {"sha256",    SHA256_DIGEST_LENGTH,    false, 64,  8,  sha256_hash},
   {"sha512",    SHA512_DIGEST_LENGTH,    false, 128, 16, sha512_hash},
+  {"tiger196",  TIGER_DIGEST_LENGTH,     true,  64,  8,  tiger196_hash},
 #ifndef DISABLE_WHIRLPOOL
   {"whirlpool", WHIRLPOOL_DIGEST_LENGTH, false, 64,  32, whirlpool_hash},
 #endif
@@ -88,6 +91,7 @@ const char *hash_type_list =
   ", sha1"
   ", sha256"
   ", sha512"
+  ", tiger196"
 #ifndef DISABLE_WHIRLPOOL
   ", whirlpool"
 #endif
@@ -101,6 +105,7 @@ char *hash_type_array[] = {
   "sha1",
   "sha256",
   "sha512",
+  "tiger196",
 #ifndef DISABLE_WHIRLPOOL
   "whirlpool",
 #endif
@@ -302,7 +307,6 @@ static void hash_test_lengths(char *hash_type_name)
         text = " different lengths (secret)";
         a_len = j;
       }
-
       /* Get the original signature. */
       hash_gen_signature(hash_type_name, secret, s_len, data, d_len, original_signature);
 
@@ -319,6 +323,7 @@ static void hash_test_lengths(char *hash_type_name)
       free(new_data);
     }
   }
+
 }
 
 void hash_test(void)
@@ -495,6 +500,28 @@ static void sha512_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t
 
   SHA512_Update(&c, data, length);
   SHA512_Final(buffer, &c);
+}
+
+
+static void tiger196_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
+{
+  uint64_t i;
+
+  TIGER_CTX c;
+  TIGER_Init(&c);
+  
+  if(state)
+  {
+    
+    for(i = 0; i < state_size; i++)
+      TIGER_Update(&c, "A", 1);
+
+    c.state[0] = htole64(((uint64_t*)state)[0]);
+    c.state[1] = htole64(((uint64_t*)state)[1]);
+    c.state[2] = htole64(((uint64_t*)state)[2]);
+  }
+  TIGER_Update(&c, data, length);
+  TIGER_Final(buffer, &c);
 }
 
 #ifndef DISABLE_WHIRLPOOL
