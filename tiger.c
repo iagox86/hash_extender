@@ -332,6 +332,21 @@ int TIGER_Init(TIGER_CTX *hasher)
     return 1;
 }
 
+
+int TIGER_Init_v1(TIGER_CTX *hasher)
+{
+	TIGER_Init(hasher);
+	hasher->version = TIGER_V1;
+    return 1;
+}
+
+int TIGER_Init_v2(TIGER_CTX *hasher)
+{
+	TIGER_Init(hasher);
+	hasher->version = TIGER_V2;
+    return 1;
+}
+
 /* Tiger basic transformation. Transforms state based on block */
 void TIGER_Transform(TIGER_CTX *hasher, const uint8_t *data)
 {
@@ -396,14 +411,13 @@ int TIGER_Final(unsigned char *md, TIGER_CTX *hasher) {
 	index = (hasher->Nl >> 3) & 0x3f;
     index = ((56 - (index + 1)) % 64) + 1;
 	memset(padding, 0, index);
-	padding[0] = 0x80; /* hasher->opad; */
+	padding[0] = hasher->version == TIGER_V1 ? 0x01 : 0x80;
 
 	/* memcpy(padding + index, (uint8_t*) &hasher->Nl, 8); */
     memcpy(padding + index, (uint8_t*) &hasher->Nl, 4);
 	memcpy(padding + index + 4, (uint8_t*) &hasher->Nh, 4);
 	
     TIGER_Update(hasher, padding, index + 8);
-	/* Append length (before padding) */
 
 	for (i = 0; i < 8; i++) {
 		md[i] = (uint8_t) (hasher->state[0] >> (8 * i));

@@ -48,7 +48,8 @@ static void sha_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *s
 static void sha1_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
 static void sha256_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
 static void sha512_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
-static void tiger192_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
+static void tiger192v1_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
+static void tiger192v2_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
 #ifndef DISABLE_WHIRLPOOL
 static void whirlpool_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
 #endif
@@ -69,14 +70,15 @@ typedef struct
 } hash_type_t;
 
 static hash_type_t hash_types[] = {
-  {"md4",       MD4_DIGEST_LENGTH,       true,  64,  8,  md4_hash},
-  {"md5",       MD5_DIGEST_LENGTH,       true,  64,  8,  md5_hash},
-  {"ripemd160", RIPEMD160_DIGEST_LENGTH, true,  64,  8,  ripemd160_hash},
-  {"sha",       SHA_DIGEST_LENGTH,       false, 64,  8,  sha_hash},
-  {"sha1",      SHA_DIGEST_LENGTH,       false, 64,  8,  sha1_hash},
-  {"sha256",    SHA256_DIGEST_LENGTH,    false, 64,  8,  sha256_hash},
-  {"sha512",    SHA512_DIGEST_LENGTH,    false, 128, 16, sha512_hash},
-  {"tiger192",  TIGER_DIGEST_LENGTH,     true,  64,  8,  tiger192_hash},
+  {"md4",         MD4_DIGEST_LENGTH,       true,  64,  8,  md4_hash},
+  {"md5",         MD5_DIGEST_LENGTH,       true,  64,  8,  md5_hash},
+  {"ripemd160",   RIPEMD160_DIGEST_LENGTH, true,  64,  8,  ripemd160_hash},
+  {"sha",         SHA_DIGEST_LENGTH,       false, 64,  8,  sha_hash},
+  {"sha1",        SHA_DIGEST_LENGTH,       false, 64,  8,  sha1_hash},
+  {"sha256",      SHA256_DIGEST_LENGTH,    false, 64,  8,  sha256_hash},
+  {"sha512",      SHA512_DIGEST_LENGTH,    false, 128, 16, sha512_hash},
+  {"tiger192v1",  TIGER_DIGEST_LENGTH,     true,  64,  8,  tiger192v1_hash},
+  {"tiger192v2",  TIGER_DIGEST_LENGTH,     true,  64,  8,  tiger192v2_hash},
 #ifndef DISABLE_WHIRLPOOL
   {"whirlpool", WHIRLPOOL_DIGEST_LENGTH, false, 64,  32, whirlpool_hash},
 #endif
@@ -91,7 +93,8 @@ const char *hash_type_list =
   ", sha1"
   ", sha256"
   ", sha512"
-  ", tiger192"
+  ", tiger192v1"
+  ", tiger192v2"
 #ifndef DISABLE_WHIRLPOOL
   ", whirlpool"
 #endif
@@ -105,7 +108,8 @@ char *hash_type_array[] = {
   "sha1",
   "sha256",
   "sha512",
-  "tiger192",
+  "tiger192v1",
+  "tiger192v2",
 #ifndef DISABLE_WHIRLPOOL
   "whirlpool",
 #endif
@@ -148,7 +152,15 @@ uint8_t *hash_append_data(char *hash_type_name, uint8_t *data, uint64_t data_len
   memmove(result, data, data_length);
   *new_length = data_length;
 
-  result[(*new_length)++] = 0x80;
+  if (strcmp(hash_type_name, "tiger192v1") != 0)
+  { 
+    result[(*new_length)++] = 0x80;
+  }
+  else
+  {
+    result[(*new_length)++] = 0x01;
+  }
+  
   while(((*new_length + secret_length) % hash_type->block_size) != (hash_type->block_size - hash_type->length_size))
     result[(*new_length)++] = 0x00;
 
@@ -503,12 +515,33 @@ static void sha512_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t
 }
 
 
-static void tiger192_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
+static void tiger192v1_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
 {
   uint64_t i;
 
   TIGER_CTX c;
-  TIGER_Init(&c);
+  TIGER_Init_v1(&c);
+  
+  if(state)
+  {
+    
+    for(i = 0; i < state_size; i++)
+      TIGER_Update(&c, "A", 1);
+
+    c.state[0] = htole64(((uint64_t*)state)[0]);
+    c.state[1] = htole64(((uint64_t*)state)[1]);
+    c.state[2] = htole64(((uint64_t*)state)[2]);
+  }
+  TIGER_Update(&c, data, length);
+  TIGER_Final(buffer, &c);
+}
+
+static void tiger192v2_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
+{
+  uint64_t i;
+
+  TIGER_CTX c;
+  TIGER_Init_v2(&c);
   
   if(state)
   {
