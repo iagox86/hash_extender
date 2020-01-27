@@ -48,7 +48,7 @@ static void sha_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *s
 static void sha1_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
 static void sha256_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
 static void sha512_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
-static void tiger196_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
+static void tiger192_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
 #ifndef DISABLE_WHIRLPOOL
 static void whirlpool_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
 #endif
@@ -76,7 +76,7 @@ static hash_type_t hash_types[] = {
   {"sha1",      SHA_DIGEST_LENGTH,       false, 64,  8,  sha1_hash},
   {"sha256",    SHA256_DIGEST_LENGTH,    false, 64,  8,  sha256_hash},
   {"sha512",    SHA512_DIGEST_LENGTH,    false, 128, 16, sha512_hash},
-  {"tiger196",  TIGER_DIGEST_LENGTH,     true,  64,  8,  tiger196_hash},
+  {"tiger192",  TIGER_DIGEST_LENGTH,     true,  64,  8,  tiger192_hash},
 #ifndef DISABLE_WHIRLPOOL
   {"whirlpool", WHIRLPOOL_DIGEST_LENGTH, false, 64,  32, whirlpool_hash},
 #endif
@@ -91,7 +91,7 @@ const char *hash_type_list =
   ", sha1"
   ", sha256"
   ", sha512"
-  ", tiger196"
+  ", tiger192"
 #ifndef DISABLE_WHIRLPOOL
   ", whirlpool"
 #endif
@@ -105,7 +105,7 @@ char *hash_type_array[] = {
   "sha1",
   "sha256",
   "sha512",
-  "tiger196",
+  "tiger192",
 #ifndef DISABLE_WHIRLPOOL
   "whirlpool",
 #endif
@@ -503,7 +503,7 @@ static void sha512_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t
 }
 
 
-static void tiger196_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
+static void tiger192_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
 {
   uint64_t i;
 

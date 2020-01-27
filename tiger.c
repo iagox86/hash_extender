@@ -398,7 +398,7 @@ int TIGER_Final(unsigned char *md, TIGER_CTX *hasher) {
 	memset(padding, 0, index);
 	padding[0] = 0x80; /* hasher->opad; */
 
-	/*     memcpy(padding + index, (uint8_t*) &hasher->Nl, 8); */
+	/* memcpy(padding + index, (uint8_t*) &hasher->Nl, 8); */
     memcpy(padding + index, (uint8_t*) &hasher->Nl, 4);
 	memcpy(padding + index + 4, (uint8_t*) &hasher->Nh, 4);
 	
