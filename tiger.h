@@ -17,9 +17,6 @@ struct tiger_state_t {
 int TIGER_Init(TIGER_CTX *c);
 int TIGER_Update(TIGER_CTX *c, const void *data, size_t len);
 int TIGER_Final(unsigned char *md, TIGER_CTX *c);
-/* unsigned char *TIGER(const unsigned char *d, size_t n, unsigned char *md); */
 void TIGER_Transform(TIGER_CTX *c, const unsigned char *data);
-
-void test_tiger(const char *d, size_t n);
 
 #endif
