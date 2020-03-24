@@ -79,5 +79,9 @@ void test_report(void)
     printf("TESTS PASSED: %d / %d [%2.4f%%]\n", tests_passed, tests_run, 100 * (float)tests_passed / tests_run);
     printf("--------------------------------------------------------------------------------\n");
   }
+
+  if (tests_passed != tests_run) {
+      exit(1);
+  }
 }
 
