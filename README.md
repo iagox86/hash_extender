@@ -114,8 +114,8 @@ And hashes it to the following value:
 For those of you playing along at home, you can prove this works by copying and pasting this into a terminal:
 
     echo '
-    #include <stdio.h>;
-    #include <openssl/md5.h>;
+    #include <stdio.h>
+    #include <openssl/md5.h>
   
     int main(int argc, const char *argv[])
     {
@@ -153,11 +153,11 @@ So, how do we calculate the hash of the data shown above without actually having
 
 Well, first, we need to look at what we have to work with: `data`, `append`, `H`, and `H(secret || data)`.
 
-We need to define a new function, `H&prime;`, which uses the same hashing algorithm as `H`, but whose starting state is the final state of `H(secret || data)`, i.e., `signature`. Once we have that, we simply calculate `H&prime;(append)` and the output of that function is our hash. It sounds easy (and is!); have a look at this code:
+We need to define a new function, `H'`, which uses the same hashing algorithm as `H`, but whose starting state is the final state of `H(secret || data)`, i.e., `signature`. Once we have that, we simply calculate `H'(append)` and the output of that function is our hash. It sounds easy (and is!); have a look at this code:
 
     echo '
-    #include <stdio.h>;
-    #include <openssl/md5.h>;
+    #include <stdio.h>
+    #include <openssl/md5.h>
   
     int main(int argc, const char *argv[])
     {
