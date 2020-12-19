@@ -1,4 +1,4 @@
-#ifndef __TIGER_H_
+#ifndef __TIGER_H__
 #define __TIGER_H__
 
 #include "util.h"
