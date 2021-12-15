@@ -24,6 +24,7 @@ typedef struct {
   char     *append_format;
   uint8_t  *append;
   uint64_t  append_length;
+  char     *append_filename;
 
   char     *filename;
 
@@ -159,6 +160,9 @@ static void usage(void)
     "      Valid formats: %s\n"
     "-a --append=<data>\n"
     "      The data to append to the string. Default: raw.\n"
+    "--append-file=<file>\n"
+    "      As an alternative to specifying a string to append, this reads the original string\n"
+    "      as a file.\n"
     "--append-format=<format>\n"
     "      Valid formats: %s\n"
     "-f --format=<all|format> [REQUIRED]\n"
@@ -237,6 +241,7 @@ int main(int argc, char *argv[])
     {"data-format",          required_argument, 0, 0}, /* Input string format. */
     {"append",               required_argument, 0, 0}, /* Append string. */
     {"a",                    required_argument, 0, 0},
+    {"append-file",          required_argument, 0, 0}, /* Append file */
     {"append-format",        required_argument, 0, 0}, /* Append format. */
     {"signature",            required_argument, 0, 0}, /* Input signature. */
     {"s",                    required_argument, 0, 0},
@@ -292,6 +297,10 @@ int main(int argc, char *argv[])
         else if(!strcmp(option_name, "append") || !strcmp(option_name, "a"))
         {
           options.append_raw = optarg;
+        }
+        else if(!strcmp(option_name, "append-file"))
+        {
+          options.append_filename = optarg;
         }
         else if(!strcmp(option_name, "append-format"))
         {
@@ -402,11 +411,15 @@ int main(int argc, char *argv[])
   }
   if(options.filename != NULL && options.data_format != 0)
   {
-    error("--file amd --data-format cannot be used together");
+    error("--file and --data-format cannot be used together");
   }
-  if(options.append_raw == NULL)
+  if(options.append_raw == NULL && options.append_filename == NULL)
   {
-    error("--append is required");
+    error("--append or --append-file is required");
+  }
+  if(options.append_filename != NULL && options.append_format != 0)
+  {
+    error("--append-file and --append-format cannot be used together");
   }
   if(options.signature_raw == NULL)
   {
@@ -441,7 +454,10 @@ int main(int argc, char *argv[])
     options.data = read_file(options.filename, &options.data_length);
 
   /* Convert the appended data. */
-  options.append = format_decode(options.append_format, (uint8_t*)options.append_raw, strlen(options.append_raw), &options.append_length);
+  if(options.append_raw)
+    options.append = format_decode(options.append_format, (uint8_t*)options.append_raw, strlen(options.append_raw), &options.append_length);
+  else
+    options.append = read_file(options.append_filename, &options.append_length);
 
   /* Convert the signature. */
   options.signature = format_decode(options.signature_format, (uint8_t*)options.signature_raw, strlen(options.signature_raw), &options.signature_length);
