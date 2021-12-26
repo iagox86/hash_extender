@@ -26,6 +26,7 @@ typedef struct {
   uint64_t  append_length;
 
   char     *filename;
+  char     *appendfilename;
 
   char     *signature_raw;
   char     *signature_format;
@@ -41,87 +42,12 @@ typedef struct {
   uint8_t   out_table;
   char     *out_data_format;
   char     *out_signature_format;
+  char     *out_file;
 
   uint8_t   quiet;
 } options_t;
 
 static const char *program;
-
-static void output_format(char *format, uint8_t *data, uint64_t data_length)
-{
-  uint8_t *out_data;
-  uint64_t out_length;
-
-  out_data = format_encode(format, data, data_length, &out_length);
-  fwrite(out_data, sizeof(uint8_t), out_length, stdout);
-  free(out_data);
-}
-
-/* Output the data in the chosen format. */
-static void output(options_t *options, char *type, uint64_t secret_length, uint8_t *new_data, uint64_t new_data_length, uint8_t *new_signature)
-{
-  if(options->quiet)
-  {
-    output_format(options->out_signature_format, new_signature, hash_type_digest_size(type));
-    output_format(options->out_data_format, new_data, new_data_length);
-  }
-  else if(options->out_table)
-  {
-    printf("%-9s ", type);
-    output_format(options->out_signature_format, new_signature, hash_type_digest_size(type));
-    printf(" ");
-    output_format(options->out_data_format, new_data, new_data_length);
-    printf("\n");
-  }
-  else
-  {
-    printf("Type: %s\n", type);
-
-    printf("Secret length: %"PRId64"\n", secret_length);
-
-    printf("New signature: ");
-    output_format(options->out_signature_format, new_signature, hash_type_digest_size(type));
-    printf("\n");
-
-    printf("New string: ");
-    output_format(options->out_data_format, new_data, new_data_length);
-    printf("\n");
-
-    printf("\n");
-  }
-}
-
-static void go(options_t *options)
-{
-  size_t secret_length;
-
-  /* Loop through the possible lengths of 'secret'. */
-  for(secret_length = options->secret_min; secret_length <= options->secret_max; secret_length++)
-  {
-    uint8_t *new_data;
-    uint8_t new_signature[MAX_DIGEST_LENGTH];
-    uint64_t new_length;
-    uint32_t i;
-
-    /* Loop through the possible hashtypes. */
-    for(i = 0; i < options->format_count; i++)
-    {
-      char *format = options->formats[i];
-
-      /* Generate the new data. */
-      new_data = hash_append_data(format, options->data, options->data_length, secret_length, options->append, options->append_length, &new_length);
-
-      /* Generate the signature for it.  */
-      hash_gen_signature_evil(format, secret_length, options->data_length, options->signature, options->append, options->append_length, new_signature);
-
-      /* Display the result to the user. */
-      output(options, format, secret_length, new_data, new_length, new_signature);
-
-      /* Free the buffer. */
-      free(new_data);
-    }
-  }
-}
 
 static void usage(void)
 {
@@ -150,6 +76,9 @@ static void usage(void)
     "      The format the string is being passed in as. Default: raw.\n"
     "      Valid formats: %s\n"
     "--file=<file>\n"
+    "      As an alternative to specifying a string, this reads the original string\n"
+    "      as a file.\n"
+    "--appendfile=<file>\n"
     "      As an alternative to specifying a string, this reads the original string\n"
     "      as a file.\n"
     "-s --signature=<sig>\n"
@@ -182,6 +111,8 @@ static void usage(void)
     "OUTPUT OPTIONS\n"
     "--table\n"
     "      Output the string in a table format.\n"
+    "-o --out-file=<sig>\n"
+    "      Output data file.\n"
     "--out-data-format=<format>\n"
     "      Output data format.\n"
     "      Valid formats: %s\n"
@@ -221,6 +152,98 @@ static void error(const char *message)
   usage();
 }
 
+static void file_output_format(char *format, uint8_t *data, uint64_t data_length, FILE *outfil)
+{
+  uint8_t *out_data;
+  uint64_t out_length;
+
+  out_data = format_encode(format, data, data_length, &out_length);
+  fwrite(out_data, sizeof(uint8_t), out_length, outfil);
+  free(out_data);
+}
+
+static void output_format(char *format, uint8_t *data, uint64_t data_length)
+{
+  file_output_format(format, data, data_length, stdout);
+}
+
+/* Output the data in the chosen format. */
+static void output(options_t *options, char *type, uint64_t secret_length, uint8_t *new_data, uint64_t new_data_length, uint8_t *new_signature)
+{
+  if(options->quiet)
+  {
+    output_format(options->out_signature_format, new_signature, hash_type_digest_size(type));
+    output_format(options->out_data_format, new_data, new_data_length);
+  }
+  else if(options->out_table)
+  {
+    printf("%-9s ", type);
+    output_format(options->out_signature_format, new_signature, hash_type_digest_size(type));
+    printf(" ");
+    output_format(options->out_data_format, new_data, new_data_length);
+    printf("\n");
+  }
+  else
+  {
+    printf("Type: %s\n", type);
+
+    printf("Secret length: %"PRId64"\n", secret_length);
+
+    printf("New signature: ");
+    output_format(options->out_signature_format, new_signature, hash_type_digest_size(type));
+    printf("\n");
+
+    printf("New string: ");
+    if(options->out_file) {
+      FILE *fp;
+      fp=fopen(options->out_file, "w");
+      if(fp) { 
+        file_output_format(options->out_data_format, new_data, new_data_length, fp);
+        fclose(fp);
+      } else {
+        error("failed to create ouptfile\n");
+      }
+    } else {
+      output_format(options->out_data_format, new_data, new_data_length);
+    }
+    printf("\n");
+
+    printf("\n");
+  }
+}
+
+static void go(options_t *options)
+{
+  size_t secret_length;
+
+  /* Loop through the possible lengths of 'secret'. */
+  for(secret_length = options->secret_min; secret_length <= options->secret_max; secret_length++)
+  {
+    uint8_t *new_data;
+    uint8_t new_signature[MAX_DIGEST_LENGTH];
+    uint64_t new_length;
+    uint32_t i;
+
+    /* Loop through the possible hashtypes. */
+    for(i = 0; i < options->format_count; i++)
+    {
+      char *format = options->formats[i];
+
+      /* Generate the new data. */
+      new_data = hash_append_data(format, options->data, options->data_length, secret_length, options->append, options->append_length, &new_length);
+
+      /* Generate the signature for it.  */
+      hash_gen_signature_evil(format, secret_length, options->data_length, options->signature, options->append, options->append_length, new_signature);
+
+      /* Display the result to the user. */
+      output(options, format, secret_length, new_data, new_length, new_signature);
+
+      /* Free the buffer. */
+      free(new_data);
+    }
+  }
+}
+
 int main(int argc, char *argv[])
 {
   options_t    options;
@@ -236,6 +259,7 @@ int main(int argc, char *argv[])
     {"file",                 required_argument, 0, 0}, /* Input file. */
     {"data-format",          required_argument, 0, 0}, /* Input string format. */
     {"append",               required_argument, 0, 0}, /* Append string. */
+    {"appendfile",           required_argument, 0, 0}, /* Append file. */
     {"a",                    required_argument, 0, 0},
     {"append-format",        required_argument, 0, 0}, /* Append format. */
     {"signature",            required_argument, 0, 0}, /* Input signature. */
@@ -248,6 +272,8 @@ int main(int argc, char *argv[])
     {"secret-min",           required_argument, 0, 0}, /* Secret min length. */
     {"secret-max",           required_argument, 0, 0}, /* Secret max length. */
     {"table",                no_argument,       0, 0}, /* Output as a table. */
+    {"out-file",             required_argument, 0, 0}, /* Output file. */
+    {"o",                    required_argument, 0, 0},
     {"out-data-format",      required_argument, 0, 0}, /* Output string format. */
     {"out-signature-format", required_argument, 0, 0}, /* Output signature format. */
     {"help",                 no_argument,       0, 0}, /* Help. */
@@ -300,6 +326,10 @@ int main(int argc, char *argv[])
           else
             error("Unknown option passed to --append-format");
         }
+        else if(!strcmp(option_name, "appendfile"))
+        {
+          options.appendfilename = optarg;
+        }
         else if(!strcmp(option_name, "signature") || !strcmp(option_name, "s"))
         {
           options.signature_raw = optarg;
@@ -339,6 +369,10 @@ int main(int argc, char *argv[])
         else if(!strcmp(option_name, "table"))
         {
           options.out_table = 1;
+        }
+        else if(!strcmp(option_name, "out-file") || !strcmp(option_name, "o"))
+        {
+          options.out_file = optarg;
         }
         else if(!strcmp(option_name, "out-data-format"))
         {
@@ -402,11 +436,15 @@ int main(int argc, char *argv[])
   }
   if(options.filename != NULL && options.data_format != 0)
   {
-    error("--file amd --data-format cannot be used together");
+    error("--file and --data-format cannot be used together");
   }
-  if(options.append_raw == NULL)
+  if(options.append_raw == NULL && options.appendfilename == NULL)
   {
-    error("--append is required");
+    error("--append or --appendfile is required");
+  }
+  if(options.append_raw != NULL && options.appendfilename != NULL)
+  {
+    error("--append and --appendfile cannot be used together");
   }
   if(options.signature_raw == NULL)
   {
@@ -441,7 +479,11 @@ int main(int argc, char *argv[])
     options.data = read_file(options.filename, &options.data_length);
 
   /* Convert the appended data. */
-  options.append = format_decode(options.append_format, (uint8_t*)options.append_raw, strlen(options.append_raw), &options.append_length);
+  if(options.appendfilename) {
+    options.append = read_file(options.appendfilename, &options.append_length);
+  } else {
+    options.append = format_decode(options.append_format, (uint8_t*)options.append_raw, strlen(options.append_raw), &options.append_length);
+  }
 
   /* Convert the signature. */
   options.signature = format_decode(options.signature_format, (uint8_t*)options.signature_raw, strlen(options.signature_raw), &options.signature_length);
