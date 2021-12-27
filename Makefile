@@ -13,7 +13,11 @@ OS		:= $(shell uname | tr '/[[:lower:]]' '_[[:upper:]]')
 CC		:= gcc
 CFLAGS		:= -std=c89 -g -oS -Wall -Werror -Wno-deprecated
 CPPFLAGS	:= -D_DEFAULT_SOURCE -D$(OS) $(WHIRLPOOL)
-LDFLAGS		:= -lssl -lcrypto
+ifeq ($(OS),DARWIN)
+    LDFLAGS		:= -lssl -lcrypto -L/usr/local/opt/openssl/lib/
+else
+    LDFLAGS		:= -lssl -lcrypto
+endif
 
 BIN_MAIN	:= hash_extender
 BIN_TEST	:= hash_extender_test
