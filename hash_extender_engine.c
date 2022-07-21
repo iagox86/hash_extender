@@ -30,6 +30,7 @@
 #include <openssl/sha.h>
 #include <openssl/sha.h>
 #include <openssl/sha.h>
+#include <openssl/evp.h>
 #include "tiger.h"
 #ifndef DISABLE_WHIRLPOOL
 #include <openssl/whrlpool.h>
@@ -48,6 +49,7 @@ static void sha_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *s
 static void sha1_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
 static void sha256_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
 static void sha512_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
+static void sm3_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
 static void tiger192v1_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
 static void tiger192v2_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size);
 #ifndef DISABLE_WHIRLPOOL
@@ -77,6 +79,7 @@ static hash_type_t hash_types[] = {
   {"sha1",        SHA_DIGEST_LENGTH,       false, 64,  8,  sha1_hash},
   {"sha256",      SHA256_DIGEST_LENGTH,    false, 64,  8,  sha256_hash},
   {"sha512",      SHA512_DIGEST_LENGTH,    false, 128, 16, sha512_hash},
+  {"sm3",         SHA256_DIGEST_LENGTH,    false, 64,  8,  sm3_hash},
   {"tiger192v1",  TIGER_DIGEST_LENGTH,     true,  64,  8,  tiger192v1_hash},
   {"tiger192v2",  TIGER_DIGEST_LENGTH,     true,  64,  8,  tiger192v2_hash},
 #ifndef DISABLE_WHIRLPOOL
@@ -93,6 +96,7 @@ const char *hash_type_list =
   ", sha1"
   ", sha256"
   ", sha512"
+  ", sm3"
   ", tiger192v1"
   ", tiger192v2"
 #ifndef DISABLE_WHIRLPOOL
@@ -108,6 +112,7 @@ char *hash_type_array[] = {
   "sha1",
   "sha256",
   "sha512",
+  "sm3",
   "tiger192v1",
   "tiger192v2",
 #ifndef DISABLE_WHIRLPOOL
@@ -514,6 +519,35 @@ static void sha512_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t
   SHA512_Final(buffer, &c);
 }
 
+
+static void sm3_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
+{
+  uint64_t i;
+
+  uint32_t h[8];
+  EVP_MD_CTX *md_ctx = EVP_MD_CTX_new();
+  EVP_DigestInit(md_ctx, EVP_sm3());
+
+  if(state)
+  {
+    for(i = 0; i < state_size; i++)
+      EVP_DigestUpdate(md_ctx, "A", 1);
+
+    h[0] = htobe32(((int*)state)[0]);
+    h[1] = htobe32(((int*)state)[1]);
+    h[2] = htobe32(((int*)state)[2]);
+    h[3] = htobe32(((int*)state)[3]);
+    h[4] = htobe32(((int*)state)[4]);
+    h[5] = htobe32(((int*)state)[5]);
+    h[6] = htobe32(((int*)state)[6]);
+    h[7] = htobe32(((int*)state)[7]);
+    memcpy(EVP_MD_CTX_md_data(md_ctx), h, SHA256_DIGEST_LENGTH);
+  }
+
+  EVP_DigestUpdate(md_ctx, data, length);
+  EVP_DigestFinal(md_ctx, buffer, NULL);
+  EVP_MD_CTX_free(md_ctx);
+}
 
 static void tiger192v1_hash(uint8_t *data, uint64_t length, uint8_t *buffer, uint8_t *state, uint64_t state_size)
 {
