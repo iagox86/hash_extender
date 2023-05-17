@@ -11,7 +11,7 @@ OS		:= $(shell uname | tr '/[[:lower:]]' '_[[:upper:]]')
 
 # These are the specifications of the toolchain
 CC		:= gcc
-CFLAGS		:= -std=c89 -g -oS -Wall -Werror -Wno-deprecated
+CFLAGS		:= -std=c89 -g -oS -Wall -Werror -Wno-deprecated-declarations
 CPPFLAGS	:= -D_DEFAULT_SOURCE -D$(OS) $(WHIRLPOOL)
 ifeq ($(OS),DARWIN)
     LDFLAGS		:= -lssl -lcrypto -L/usr/local/opt/openssl/lib/
